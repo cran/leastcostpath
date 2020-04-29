@@ -1,0 +1,129 @@
+## ----libraries, echo = TRUE, message= FALSE, warning= FALSE-------------------
+library(rgdal)
+library(rgeos)
+library(sp)
+library(raster)
+library(spdep)
+library(gdistance)
+library(leastcostpath)
+
+## ----raster, echo = TRUE,  fig.height = 6, fig.width = 6, warning = FALSE-----
+r <- raster::raster(system.file('external/maungawhau.grd', package = 'gdistance'))
+
+locs <- sp::spsample(gBuffer(as(extent(r), "SpatialPolygons"), width = -100),n=50,'random')
+
+final_cs <- create_slope_cs(dem = r, cost_function = 'tobler', neighbours = 16) %>%
+  "*" (create_traversal_cs(dem = r, neighbours = 16))
+
+plot(r)
+plot(locs, add = T)
+
+## ----lcp_matrix, echo = TRUE,  fig.height = 6, fig.width = 6, warning = FALSE----
+locs_matrix <- cbind(c(1, 4, 2, 1), c(2, 2, 4, 3))
+
+locs_matrix
+
+
+## ----lcp_network, echo = TRUE,  fig.height = 6, fig.width = 6, warning = FALSE----
+ lcp_network <- final_cs %>%
+  create_lcp_network(., locations = locs, nb_matrix = locs_matrix, cost_distance = FALSE, parallel = FALSE)
+
+plot(r)
+plot(locs, add = T)
+plot(lcp_network, add = T, col = "red")
+
+## ----lcp_matrix_del, echo = TRUE,  fig.height = 6, fig.width = 6, warning = FALSE----
+neighbour_pts <- spdep::tri2nb(locs)
+
+origin_ids <- base::rep(base::seq_along(neighbour_pts), base::sapply(neighbour_pts, function(x) base::length(x)))
+
+destination_ids <- base::unlist(neighbour_pts)
+
+locs_matrix <- base::cbind(origin_ids, destination_ids)
+
+head(locs_matrix)
+tail(locs_matrix)
+
+
+## ----lcp_network_del, echo = TRUE,  fig.height = 6, fig.width = 6, warning = FALSE----
+ lcp_network <- final_cs %>%
+  create_lcp_network(., locations = locs, nb_matrix = locs_matrix, cost_distance = FALSE, parallel = FALSE)
+
+plot(r)
+plot(locs, add = T)
+plot(lcp_network, add = T, col = "red")
+
+## ----lcp_matrix_g, echo = TRUE,  fig.height = 6, fig.width = 6, warning = FALSE----
+neighbour_pts <- spdep::gabrielneigh(locs)
+
+locs_matrix <- base::cbind(neighbour_pts$from, neighbour_pts$to)
+
+head(locs_matrix)
+tail(locs_matrix)
+
+
+## ----lcp_network_g, echo = TRUE,  fig.height = 6, fig.width = 6, warning = FALSE----
+ lcp_network <- final_cs %>%
+  create_lcp_network(., locations = locs, nb_matrix = locs_matrix, cost_distance = FALSE, parallel = FALSE)
+
+plot(r)
+plot(locs, add = T)
+plot(lcp_network, add = T, col = "red")
+
+## ----lcp_matrix_k, echo = TRUE,  fig.height = 6, fig.width = 6, warning = FALSE----
+neighbour_pts <- spdep::knearneigh(locs, k= 2)
+
+k_network <- function(k_neigh) {
+  
+  k_neigh <- k_neigh$nn
+  
+  col_no <- ncol(k_neigh)
+  
+  locs <- seq_along(1:nrow(neighbour_pts$nn))
+  
+  k1 <- cbind(locs, k_neigh[, 1])
+  
+  if (col_no > 1) {
+    
+    print("greater than 1")
+    
+    k <- list()
+    
+    for (i in 2:col_no) {
+      k[[i]] <- k_neigh[, c(1, i)]
+      
+    }
+    
+    knear <- do.call(rbind, k)
+    
+    kplus <- rbind(k1, knear)
+    
+    return(kplus)
+    
+    
+  } else {
+    
+    print("less than 1")
+    
+    return(k1)
+    
+  }
+  
+}
+
+neighbour_pts <- k_network(neighbour_pts)
+
+locs_matrix <- neighbour_pts
+
+head(locs_matrix)
+tail(locs_matrix)
+
+
+## ----lcp_network_k, echo = TRUE,  fig.height = 6, fig.width = 6, warning = FALSE----
+ lcp_network <- final_cs %>%
+  create_lcp_network(., locations = locs, nb_matrix = locs_matrix, cost_distance = FALSE, parallel = FALSE)
+
+plot(r)
+plot(locs, add = T)
+plot(lcp_network, add = T, col = "red")
+

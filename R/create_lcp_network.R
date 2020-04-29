@@ -1,18 +1,20 @@
-#' create_FETE_lcps
+#' create_lcp_network
 #'
-#' Calculates least cost paths from each location to all other locations.
+#' Calculates least cost paths from origins and destinations
 #'
-#' Computes least cost paths from each location to all other locations (i.e. From Everywhere To Everywhere (FETE)). This is based on the method proposed by White and Barber (2012).
+#' Computes least cost paths from each origins and destinations as specified in the neighbour matrix.
 #'
 #' @param cost_surface \code{TransitionLayer} object (gdistance package). Cost surface to be used in Least Cost Path calculation.
 #'
-#' @param locations \code{SpatialPoints}. Locations to calculate Least Cost Paths from and to.
+#' @param locations \code{SpatialPoints}. Potential locations to calculate Least Cost Paths from and to.
+#'
+#' @param nb_matrix \code{matrix}. 2 column matrix representing the index of origins and destinations to calculate least cost paths between.
 #'
 #' @param cost_distance if TRUE computes total accumulated cost for each Least Cost Path. Default is FALSE.
 #'
 #'@param parallel if TRUE, the Least Cost Paths will be calculated in parallel. Number of Parallel socket clusters is total number of cores available minus 1. Default is FALSE.
 #'
-#' @return \code{SpatialLinesDataFrame} (sp package). The resultant object contains least cost paths calculated from each location to all other locations.
+#' @return \code{SpatialLinesDataFrame} (sp package). The resultant object contains least cost paths calculated from each origins and destinations as specified in the neighbour matrix.
 #'
 #' @author Joseph Lewis
 #'
@@ -37,10 +39,10 @@
 #'
 #'locs <- sp::spsample(as(raster::extent(r), 'SpatialPolygons'),n=5,'regular')
 #'
-#'lcp_network <- create_FETE_lcps(cost_surface = slope_cs, locations = locs,
-#'cost_distance = FALSE, parallel = FALSE)
+#'lcp_network <- create_lcp_network(slope_cs, locations = locs,
+#'nb_matrix = cbind(c(1, 4, 2, 1), c(2, 2, 4, 3)), cost_distance = FALSE, parallel = FALSE)
 
-create_FETE_lcps <- function(cost_surface, locations, cost_distance = FALSE, parallel = FALSE) {
+create_lcp_network <- function(cost_surface, locations, nb_matrix = NULL, cost_distance = FALSE, parallel = FALSE) {
     
     if (!inherits(cost_surface, "TransitionLayer")) {
         stop("cost_surface argument is invalid. Expecting a TransitionLayer object")
@@ -50,12 +52,19 @@ create_FETE_lcps <- function(cost_surface, locations, cost_distance = FALSE, par
         stop("Locations argument is invalid. Expecting SpatialPoints or SpatialPointsDataFrame object")
     }
     
-    if (length(locations) < 2) 
+    if (length(locations) < 2) {
         stop("Number of locations invalid. Expecting more than one location")
+    }
     
-    network <- (expand.grid(seq_along(locations), seq_along(locations)))
+    if (!inherits(nb_matrix, "matrix")) {
+        stop("nb_matrix argument is invalid. Expecting a two column matrix object")
+    }
     
-    network <- network[network[, 1] != network[, 2], ]
+    if (max(nb_matrix) > length(locations)) {
+        stop("Value within nb_matrix exceeds number of locations")
+    }
+    
+    network <- nb_matrix
     
     if (parallel) {
         
