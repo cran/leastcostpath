@@ -1,3 +1,18 @@
+# 1.3.6 (13th May 2020)
+* Implemented cost_matrix to be used with the create_lcp_network nb_matrix argument 
+* Fixed error in create_slope_cs when using 16 neighbours
+
+# 1.3.5 (11th May 2020)
+* Implemented create_barrier_cs
+
+# 1.3.4 (4th May 2020)
+* create_lcp returns SpatialLines rather than list
+* Added cost_distance function argument to create_lcp
+
+# 1.2.4 (29th April 2020)
+* Fixed max_slope in create_slope_cs function
+* Fixed create_traversal_cs to work when max_slope in create_slope_cs used 
+
 # 1.2.3 (28 April 2020)
 * Added create_lcp_network vignette
 * Fixed create_lcp_density issue where raster values of 1 would become 0 when rescale is TRUE

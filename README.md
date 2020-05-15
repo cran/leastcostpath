@@ -1,4 +1,4 @@
-leastcostpath - version 1.2.3 [![Travis build status](https://travis-ci.org/josephlewis/leastcostpath.svg?branch=master)](https://travis-ci.org/josephlewis/leastcostpath)
+leastcostpath - version 1.3.6 [![Build Status](https://travis-ci.org/josephlewis/leastcostpath.svg?branch=master)](https://travis-ci.org/josephlewis/leastcostpath)
 [![CRAN status](https://www.r-pkg.org/badges/version/leastcostpath)](https://cran.r-project.org/package=leastcostpath)
 [![CRAN Downloads Month](https://cranlogs.r-pkg.org/badges/leastcostpath)](https://cranlogs.r-pkg.org/badges/leastcostpath)
 [![CRAN Downloads TOtal](https://cranlogs.r-pkg.org/badges/grand-total/leastcostpath)](https://cranlogs.r-pkg.org/badges/grand-total/leastcostpath)
@@ -34,7 +34,10 @@ Usage
     slope_cs <- create_slope_cs(r, cost_function = 'tobler')
     traverse_cs <- create_traversal_cs(r)
     final_cost_cs <- slope_cs * traverse_cs
-
+    
+    slope_cs_10 <- create_slope_cs(r, cost_function = 'tobler', max_slope = 10)
+    final_cost_cs_10 <- slope_cs_10 * traverse_cs
+    
 #### Least Cost Path computation
 
     loc1 = cbind(2667670, 6479000)
@@ -46,8 +49,8 @@ Usage
     lcps <- create_lcp(cost_surface = final_cost_cs, origin = loc1, destination = loc2, directional = FALSE)
   
     plot(raster(final_cost_cs))
-    plot(lcps[[1]], add = T, col = "red") # location 1 to location 2
-    plot(lcps[[2]], add = T, col = "blue") # location 2 to location 1
+    plot(lcps[1,], add = T, col = "red") # location 1 to location 2
+    plot(lcps[2,], add = T, col = "blue") # location 2 to location 1
     
 #### Cost Corridors
 
@@ -59,7 +62,7 @@ Usage
     
 #### From-Everywhere-to-Everywhere Least Cost Paths
 
-    locs <- spsample(as(r, 'SpatialPolygons'),n=10,'regular')
+    locs <- sp::spsample(as(raster::extent(r), 'SpatialPolygons'),n=10,'regular')
     
     lcp_network <- create_FETE_lcps(cost_surface = final_cost_cs, locations = locs,
     cost_distance = FALSE, parallel = FALSE)
@@ -70,7 +73,7 @@ Usage
     
 #### Cumulative Cost Paths
 
-    locs <- sp::spsample(as(r, 'SpatialPolygons'),n=1,'random')
+    locs <- sp::spsample(as(raster::extent(r), 'SpatialPolygons'),n=1,'random')
 
     lcp_network <- create_CCP_lcps(cost_surface = final_cost_cs, location = locs, distance = 50,
     radial_points = 10, cost_distance = FALSE, parallel = FALSE)
@@ -81,7 +84,7 @@ Usage
     
 #### Banded Least Cost Paths
 
-    locs <- sp::spsample(as(r, 'SpatialPolygons'),n=1,'random')
+    locs <- sp::spsample(as(raster::extent(r), 'SpatialPolygons'),n=1,'random')
 
     lcp_network <- create_banded_lcps(cost_surface = final_cost_cs, location = locs, min_distance = 20,
     max_distance = 50, radial_points = 10, cost_distance = FALSE, parallel = FALSE)
@@ -96,6 +99,15 @@ Usage
 
     plot(cumulative_lcps)
     
+#### Least Cost Path Network
+
+    locs <- sp::spsample(as(raster::extent(r), 'SpatialPolygons'),n=5,'regular')
+    
+    mat <- cbind(c(1, 4, 2, 1), c(2, 2, 4, 3))
+    
+    lcp_network <- create_lcp_network(slope_cs, locations = locs, 
+    nb_matrix = mat, cost_distance = FALSE, parallel = FALSE)
+    
 #### Pipes!
 
     cost_surface <- create_slope_cs(r, cost_function = 'tobler') %>%
@@ -108,7 +120,7 @@ Usage
     cost_corridor <- cost_surface %>% 
     create_cost_corridor(., loc1, loc2)
     
-    locs <- sp::spsample(as(r, 'SpatialPolygons'),n=10,'regular')
+    locs <- sp::spsample(as(extent(r), 'SpatialPolygons'),n=10,'regular')
     
     lcp_network <- cost_surface %>% 
     create_FETE_lcps(cost_surface = final_cost_cs, locations = locs,cost_distance = FALSE, parallel = FALSE)
@@ -116,7 +128,7 @@ Usage
     cumulative_cost_paths <- cost_surface %>% 
     create_FETE_lcps(cost_surface = final_cost_cs, locations = locs,cost_distance = FALSE, parallel = FALSE) %>%
     create_cumulative_lcps(lcps = ., raster = r, rescale = FALSE)
-
+    
 Feedback
 --------
 
@@ -163,7 +175,18 @@ Versioning
       * Added irmischer-clarke offpath male/female cost function
       * Added llobera-sluckin cost function
       * Refactored create_slope_cs for easier scalability
-
+-   version 1.2.4
+      * Fixed max_slope in create_slope_cs function.
+      * Fixed create_traversal_cs to work when max_slope in create_slope_cs used
+-   version 1.3.4
+      * create_lcp returns SpatialLines rather than list
+      * Added cost_distance function argument to create_lcp
+-   version 1.3.5
+      * Implemented create_barrier_cs
+-   version 1.3.6
+      * Implemented cost_matrix to be used with the create_lcp_network nb_matrix argument
+      * Fixed error in create_slope_cs when using 16 neighbours
+      
 Authors
 -------
 
@@ -174,4 +197,4 @@ Citation
 
 Please cite as:
 
-    Lewis, J. (2020) leastcostpath: Modelling Pathways and Movement Potential Within a Landscape (version 1.2.3)
+    Lewis, J. (2020) leastcostpath: Modelling Pathways and Movement Potential Within a Landscape (version 1.3.6)

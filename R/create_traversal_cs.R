@@ -1,14 +1,12 @@
-#' create_traversal_cs
+#' Create a Traversal across Slope Cost Surface
 #'
-#' Creates a Traversal across slope Cost Surface
+#' Creates a cost surface based on the difficulty of traversing across slope. Difficulty of traversal is based on the figure given in Bell and Lock (2000). Traversal across slope accounts for movement directly perpendicular across slope being easier than movement diagonally up/down slope.
 #'
-#' Creates a cost surface based on the difficulty of traversing **(across)** slope. Difficulty of traversal is based on the figure given in Bell and Lock (2000). Traversal across slope accounts for movement directly perpendicular across slope being easier than movement diagonally up/down slope.
-#'
-#' @param dem \code{RasterLayer} (raster package). Digital Elevation Model.
+#' @param dem \code{RasterLayer} (raster package). Digital Elevation Model
 #'
 #' @param neighbours \code{numeric} value. Number of directions used in the Least Cost Path calculation. See Huber and Church (1985) for methodological considerations when choosing number of neighbours. Expected values are 4, 8, or 16. Default is 16
 #'
-#' @return \code{TransitionLayer} (gdistance package) numerically expressing the difficulty of moving across slope based on figure given in Bell and Lock (2000). The traversal_cs \code{TransitionLayer} should be multiplied by the create_slope_cs \code{TransitionLayer}, resulting in a \code{TransitionLayer} that takes into account movement across slope in all directions.
+#' @return \code{TransitionLayer} (gdistance package) numerically expressing the difficulty of moving across slope based on figure given in Bell and Lock (2000). The traversal_cs \code{TransitionLayer} should be multiplied by the create_slope_cs \code{TransitionLayer}, resulting in a \code{TransitionLayer} that takes into account movement across slope in all directions
 #'
 #' @author Joseph Lewis
 #'
@@ -32,6 +30,10 @@ create_traversal_cs <- function(dem, neighbours = 16) {
     if (!neighbours %in% c(4, 8, 16)) {
         stop("neighbours argument is invalid. Expecting 4, 8, or 16.")
     }
+    
+    trans <- gdistance::transition(dem, transitionFunction = function(x) {
+        0
+    }, neighbours, symm = FALSE)
     
     aspect_dem <- raster::terrain(dem, opt = "aspect", unit = "degrees", neighbors = 8)
     
@@ -69,11 +71,11 @@ create_traversal_cs <- function(dem, neighbours = 16) {
         }
     }
     
-    trans <- gdistance::transition(aspect_dem, altDiff_traversal, neighbours, symm = FALSE)
+    trans_aspect <- gdistance::transition(aspect_dem, altDiff_traversal, neighbours, symm = FALSE)
     
-    if (neighbours == 8 | neighbours == 16) {
-        trans <- gdistance::geoCorrection(trans)
-    }
+    adj <- raster::adjacent(dem, cells = 1:raster::ncell(dem), pairs = TRUE, directions = neighbours)
+    
+    trans[adj] <- trans_aspect[adj]
     
     return(trans)
 }

@@ -1,8 +1,6 @@
-#' create_slope_cs
+#' Create a slope based cost surface
 #'
-#' Creates a Slope Cost Surface
-#'
-#' Creates a cost surface based on the difficulty of moving up/down slope. This function allows for multiple isotropic and anisotropic cost functions that estimate human movement across a landscape. The maximum percentage slope traversal can also be supplied.
+#' Creates a cost surface based on the difficulty of moving up/down slope. This function provides the choice of multiple isotropic and anisotropic cost functions that estimate human movement across a landscape. Maximum percentage slope possible for traversal can also be suppplied.
 #'
 #' @details
 #'
@@ -12,7 +10,7 @@
 #'
 #'The Irmischer and Clark functions were modelled from speed estimates of United States Military Academy (USMA) cadets while they navigated on foot over hilly, wooded terrain as part of their summer training in map and compass navigation.
 #'
-#' The Modified Hiking cost function combines MIDE (París Roche, 2002), a method to calculate walking hours for an average hiker with a light load (Márquez-Pérez et al., 2017), and Tobler's 'Hiking Function' (Tobler, 1993). The Modified Hiking Function benefits from the precision of the MIDE rule and the continuity of Tobler's Hiking Function (Márquez-Pérez et al., 2017).
+#' The Modified Hiking cost function combines MIDE (París Roche, 2002), a method to calculate walking hours for an average hiker with a light load (Márquez-Pérez et al. 2017), and Tobler's 'Hiking Function' (Tobler, 1993). The Modified Hiking Function benefits from the precision of the MIDE rule and the continuity of Tobler's Hiking Function (Márquez-Pérez et al. 2017).
 #'
 #' Herzog (2013), based on the cost function provided by Llobera and Sluckin (2007), has provided a cost function to approximate the cost for wheeled transport. The cost function is symmetric and is most applicable for use when the same route was taken in both directions.
 #'
@@ -20,17 +18,17 @@
 #'
 #' Llobera and Sluckin (2007) cost function approximates the metabolic energy expenditure in KJ/(m*kg) when moving across a landscape.
 #'
-#' @param dem \code{RasterLayer} (raster package). Digital Elevation Model.
+#' @param dem \code{RasterLayer} (raster package). Digital Elevation Model
 #'
-#' @param cost_function Cost Function used in the Least Cost Path calculation. Implemented cost functions include 'tobler', 'tobler offpath', 'irmischer-clarke male', 'irmischer-clarke offpath male', 'irmischer-clarke female', 'irmischer-clarke offpath female', 'modified tobler', 'wheeled transport', 'herzog', 'llobera-sluckin', 'all'. Default is 'tobler'. See Details for more information.
+#' @param cost_function \code{character}. Cost Function used in the Least Cost Path calculation. Implemented cost functions include 'tobler', 'tobler offpath', 'irmischer-clarke male', 'irmischer-clarke offpath male', 'irmischer-clarke female', 'irmischer-clarke offpath female', 'modified tobler', 'wheeled transport', 'herzog', 'llobera-sluckin', 'all'. Default is 'tobler'. See Details for more information
 #'
-#' @param neighbours \code{numeric} value. Number of directions used in the Least Cost Path calculation. See Huber and Church (1985) for methodological considerations when choosing number of neighbours. Expected values are 4, 8, or 16. Default is 16.
+#' @param neighbours \code{numeric} value. Number of directions used in the Least Cost Path calculation. See Huber and Church (1985) for methodological considerations when choosing number of neighbours. Expected values are 4, 8, or 16. Default is 16
 #'
-#' @param crit_slope Critical Slope (in percentage) is 'the transition where switchbacks become more effective than direct uphill or downhill paths'. Cost of climbing the critical slope is twice as high as those for moving on flat terrain and is used for estimating the cost of using wheeled vehicles. Default value is 12, which is the postulated maximum gradient traversable by ancient transport (Verhagen and Jeneson, 2012). Critical slope only used in 'wheeled transport' cost function.
+#' @param crit_slope \code{numeric} value. Critical Slope (in percentage) is 'the transition where switchbacks become more effective than direct uphill or downhill paths'. Cost of climbing the critical slope is twice as high as those for moving on flat terrain and is used for estimating the cost of using wheeled vehicles. Default value is 12, which is the postulated maximum gradient traversable by ancient transport (Verhagen and Jeneson, 2012). Critical slope only used in 'wheeled transport' cost function
 #'
-#' @param max_slope \code{numeric} value. Maximum percentage slope that is traversable. Default is NULL.
+#' @param max_slope \code{numeric} value. Maximum percentage slope that is traversable. Slope values that are greater than the specified max_slope are given a conductivity value of 0. Default is NULL
 #'
-#' @return \code{TransitionLayer} (gdistance package) numerically expressing the difficulty of moving up/down slope based on the cost function provided in the cost_function argument. list of \code{TransitionLayer} if cost_function = 'all'.
+#' @return \code{TransitionLayer} (gdistance package) numerically expressing the difficulty of moving up/down slope based on the cost function provided in the cost_function argument. list of \code{TransitionLayer} if cost_function = 'all'
 #'
 #' @author Joseph Lewis
 #'
@@ -61,14 +59,14 @@ create_slope_cs <- function(dem, cost_function = "tobler", neighbours = 16, crit
     }
     
     if (!neighbours %in% c(4, 8, 16)) {
-        stop("neighbours argument is invalid. Expecting 4, 8, or 16.")
+        stop("neighbours argument is invalid. Expecting 8, or 16.")
     }
     
     altDiff_slope <- function(x) {
         x[2] - x[1]
     }
     
-    hd <- suppressWarnings(gdistance::transition(dem, altDiff_slope, 8, symm = FALSE))
+    hd <- suppressWarnings(gdistance::transition(x = dem, transitionFunction = altDiff_slope, directions = neighbours, symm = FALSE))
     
     slope <- gdistance::geoCorrection(hd)
     
@@ -153,8 +151,7 @@ create_slope_cs <- function(dem, cost_function = "tobler", neighbours = 16, crit
     if (cost_function == "herzog") {
         
         cf <- function(x) {
-            (1/((1337.8 * x[adj]^6) + (278.19 * x[adj]^5) - (517.39 * x[adj]^4) - (78.199 * x[adj]^3) + (93.419 * x[adj]^2) + (19.825 * x[adj]) + 
-                1.64))
+            (1/((1337.8 * x[adj]^6) + (278.19 * x[adj]^5) - (517.39 * x[adj]^4) - (78.199 * x[adj]^3) + (93.419 * x[adj]^2) + (19.825 * x[adj]) + 1.64))
         }
         
     }
@@ -173,7 +170,7 @@ create_slope_cs <- function(dem, cost_function = "tobler", neighbours = 16, crit
         slope[adj] <- cf(slope)
         
         if (inherits(max_slope, "numeric")) {
-            slope@transitionMatrix@x[slope@transitionMatrix@x == cf(rand)] <- 0
+            slope[adj] <- ifelse(slope[adj] == unique(cf(rand))[!is.na(unique(cf(rand)))], 0, slope[adj])
         }
         
         Conductance <- gdistance::geoCorrection(slope)
@@ -181,7 +178,7 @@ create_slope_cs <- function(dem, cost_function = "tobler", neighbours = 16, crit
     
     if (cost_function %in% cfs[cfs == "all"]) {
         
-        slope_stack <- list(slope, slope, slope, slope, slope, slope, slope, slope, slope, slope)
+        slope_stack <- replicate(n = length(cfs[!cfs == "all"]), expr = slope)
         
         cf1 <- function(x) {
             (6 * exp(-3.5 * abs(x[adj] + 0.05)))
@@ -213,8 +210,7 @@ create_slope_cs <- function(dem, cost_function = "tobler", neighbours = 16, crit
             (1/(1 + abs(x[adj] * 100/crit_slope)^2))
         }
         cf9 <- function(x) {
-            (1/((1337.8 * x[adj]^6) + (278.19 * x[adj]^5) - (517.39 * x[adj]^4) - (78.199 * x[adj]^3) + (93.419 * x[adj]^2) + (19.825 * x[adj]) + 
-                1.64))
+            (1/((1337.8 * x[adj]^6) + (278.19 * x[adj]^5) - (517.39 * x[adj]^4) - (78.199 * x[adj]^3) + (93.419 * x[adj]^2) + (19.825 * x[adj]) + 1.64))
         }
         cf10 <- function(x) {
             (1/(2.635 + (17.37 * abs(x[adj])) + (42.37 * abs(x[adj])^2) - (21.43 * abs(x[adj])^3) + (14.93 * abs(x[adj])^4)))
@@ -232,16 +228,28 @@ create_slope_cs <- function(dem, cost_function = "tobler", neighbours = 16, crit
         slope_stack[[10]][adj] <- cf10(slope)
         
         if (inherits(max_slope, "numeric")) {
-            slope_stack[[1]]@transitionMatrix@x[slope_stack[[1]]@transitionMatrix@x == cf1(rand)] <- 0
-            slope_stack[[2]]@transitionMatrix@x[slope_stack[[2]]@transitionMatrix@x == cf2(rand)] <- 0
-            slope_stack[[3]]@transitionMatrix@x[slope_stack[[3]]@transitionMatrix@x == cf3(rand)] <- 0
-            slope_stack[[4]]@transitionMatrix@x[slope_stack[[4]]@transitionMatrix@x == cf4(rand)] <- 0
-            slope_stack[[5]]@transitionMatrix@x[slope_stack[[5]]@transitionMatrix@x == cf5(rand)] <- 0
-            slope_stack[[6]]@transitionMatrix@x[slope_stack[[6]]@transitionMatrix@x == cf6(rand)] <- 0
-            slope_stack[[7]]@transitionMatrix@x[slope_stack[[6]]@transitionMatrix@x == cf7(rand)] <- 0
-            slope_stack[[8]]@transitionMatrix@x[slope_stack[[8]]@transitionMatrix@x == cf8(rand)] <- 0
-            slope_stack[[9]]@transitionMatrix@x[slope_stack[[9]]@transitionMatrix@x == cf9(rand)] <- 0
-            slope_stack[[10]]@transitionMatrix@x[slope_stack[[10]]@transitionMatrix@x == cf10(rand)] <- 0
+            
+            slope_stack[[1]][adj] <- ifelse(slope_stack[[1]][adj] == unique(cf1(rand))[!is.na(unique(cf1(rand)))], 0, slope_stack[[1]][adj])
+            
+            slope_stack[[2]][adj] <- ifelse(slope_stack[[2]][adj] == unique(cf2(rand))[!is.na(unique(cf2(rand)))], 0, slope_stack[[2]][adj])
+            
+            slope_stack[[3]][adj] <- ifelse(slope_stack[[3]][adj] == unique(cf3(rand))[!is.na(unique(cf3(rand)))], 0, slope_stack[[3]][adj])
+            
+            slope_stack[[4]][adj] <- ifelse(slope_stack[[4]][adj] == unique(cf4(rand))[!is.na(unique(cf4(rand)))], 0, slope_stack[[4]][adj])
+            
+            slope_stack[[5]][adj] <- ifelse(slope_stack[[5]][adj] == unique(cf5(rand))[!is.na(unique(cf5(rand)))], 0, slope_stack[[5]][adj])
+            
+            slope_stack[[6]][adj] <- ifelse(slope_stack[[6]][adj] == unique(cf6(rand))[!is.na(unique(cf6(rand)))], 0, slope_stack[[6]][adj])
+            
+            slope_stack[[7]][adj] <- ifelse(slope_stack[[7]][adj] == unique(cf7(rand))[!is.na(unique(cf7(rand)))], 0, slope_stack[[7]][adj])
+            
+            slope_stack[[8]][adj] <- ifelse(slope_stack[[8]][adj] == unique(cf8(rand))[!is.na(unique(cf8(rand)))], 0, slope_stack[[8]][adj])
+            
+            slope_stack[[9]][adj] <- ifelse(slope_stack[[9]][adj] == unique(cf9(rand))[!is.na(unique(cf9(rand)))], 0, slope_stack[[9]][adj])
+            
+            slope_stack[[10]][adj] <- ifelse(slope_stack[[10]][adj] == unique(cf10(rand))[!is.na(unique(cf10(rand)))], 0, slope_stack[[10]][adj])
+            
+            
         }
         
         

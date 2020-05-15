@@ -9,7 +9,12 @@ library(leastcostpath)
 ## ----raster, echo = TRUE,  fig.height = 6, fig.width = 6, warning = FALSE-----
 r <- raster::raster(system.file('external/maungawhau.grd', package = 'gdistance'))
 
+r_extent <- as(raster::extent(r), 'SpatialPolygons')
+
+crs(r_extent) <- crs(r)
+
 plot(r)
+plot(r_extent, add = T, border = "red")
 
 ## ----slope_cs, echo = TRUE,  fig.height = 6, fig.width = 6, warning = FALSE----
 cs <- create_slope_cs(dem = r, cost_function = 'tobler', neighbours = 16)
@@ -25,8 +30,8 @@ loc2 = sp::SpatialPoints(loc2)
 lcp <- create_lcp(cost_surface = cs, origin = loc1, destination = loc2, directional = FALSE)
 
 plot(raster(cs))
-plot(lcp[[1]], add = T, col = "red")
-plot(lcp[[2]], add = T, col = "blue")
+plot(lcp[1,], add = T, col = "red")
+plot(lcp[2,], add = T, col = "blue")
 
 ## ----slope_traverse_cs, echo = TRUE,  fig.height = 6, fig.width = 6, warning = FALSE----
 cs <- create_slope_cs(dem = r, cost_function = 'tobler', neighbours = 16) %>%
@@ -43,8 +48,8 @@ loc2 = sp::SpatialPoints(loc2)
 lcp <- create_lcp(cost_surface = cs, origin = loc1, destination = loc2, directional = FALSE)
 
 plot(raster(cs))
-plot(lcp[[1]], add = T, col = "red")
-plot(lcp[[2]], add = T, col = "blue")
+plot(lcp[1,], add = T, col = "red")
+plot(lcp[2,], add = T, col = "blue")
 
 ## ----slope_traverse_feature_cs, echo = TRUE,  fig.height = 6, fig.width = 6, warning = FALSE----
 feature_loc = cbind(2667652, 6478997)
@@ -68,8 +73,8 @@ lcp <- create_lcp(cost_surface = cs, origin = loc1, destination = loc2, directio
 
 plot(raster(cs))
 plot(feature_loc, add = T, col = "black")
-plot(lcp[[1]], add = T, col = "red")
-plot(lcp[[2]], add = T, col = "blue")
+plot(lcp[1,], add = T, col = "red")
+plot(lcp[2,], add = T, col = "blue")
 
 ## ----slope_traverse_feature_cc, echo = TRUE,  fig.height = 6, fig.width = 6, warning = FALSE----
 feature_loc = cbind(2667652, 6478997)
@@ -94,7 +99,7 @@ cc <- create_cost_corridor(cs, loc1, loc2)
 plot(cc)
 
 ## ----fete, echo = TRUE,  fig.height = 6, fig.width = 6, warning = FALSE-------
-locs <- sp::spsample(as(r, 'SpatialPolygons'),n=25,'regular')
+locs <- sp::spsample(r_extent,n=25,'regular')
 
 lcp_network <- create_slope_cs(dem = r, cost_function = 'tobler', neighbours = 16) %>%
   "*" (create_traversal_cs(dem = r, neighbours = 16)) %>%
@@ -143,7 +148,7 @@ plot(locs, add = T)
 plot(lcp_network, add = T, col = "red")
 
 ## ----lcp_network, echo = TRUE,  fig.height = 6, fig.width = 6, warning = FALSE----
-locs <- sp::spsample(as(r, 'SpatialPolygons'),n=5,'regular')
+locs <- sp::spsample(r_extent,n=10,'random')
 
 lcp_network <- create_slope_cs(dem = r, cost_function = 'tobler', neighbours = 16) %>%
   "*" (create_traversal_cs(dem = r, neighbours = 16)) %>%
