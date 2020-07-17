@@ -12,6 +12,8 @@
 #'
 #' @param cost_distance \code{logical}. if TRUE computes total accumulated cost for each Least Cost Path. Default is FALSE
 #'
+#' @references Dijkstra, E. W. (1959). A note on two problems in connexion with graphs. Numerische Mathematik. 1: 269-271.
+#'
 #' @author Joseph Lewis
 #'
 #' @import rgdal
@@ -62,7 +64,7 @@ create_lcp <- function(cost_surface, origin, destination, directional = FALSE, c
         
         if (cost_distance) {
             
-            sPath$cost <- gdistance::costDistance(cost_surface, origin, destination)
+            sPath$cost <- as.vector(gdistance::costDistance(cost_surface, origin, destination))
             
         }
         
@@ -77,8 +79,8 @@ create_lcp <- function(cost_surface, origin, destination, directional = FALSE, c
         
         if (cost_distance) {
             
-            sPaths[[1]]$cost <- gdistance::costDistance(cost_surface, origin, destination)
-            sPaths[[2]]$cost <- gdistance::costDistance(cost_surface, destination, origin)
+            sPaths[[1]]$cost <- as.vector(gdistance::costDistance(cost_surface, origin, destination))
+            sPaths[[2]]$cost <- as.vector(gdistance::costDistance(cost_surface, destination, origin))
             
         }
         

@@ -99,7 +99,7 @@ cc <- create_cost_corridor(cs, loc1, loc2)
 plot(cc)
 
 ## ----fete, echo = TRUE,  fig.height = 6, fig.width = 6, warning = FALSE-------
-locs <- sp::spsample(r_extent,n=25,'regular')
+locs <- sp::spsample(r_extent,n=4,'regular')
 
 lcp_network <- create_slope_cs(dem = r, cost_function = 'tobler', neighbours = 16) %>%
   "*" (create_traversal_cs(dem = r, neighbours = 16)) %>%

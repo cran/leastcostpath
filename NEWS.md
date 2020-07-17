@@ -1,3 +1,42 @@
+# 1.7.4 (17th July 2020)
+* Allow for the rasterisation of SpatialLines in create_lcp_density through the rasterize_as_points argument. If FALSE, SpatialLines are rasterised. If TRUE, SpatialLines converted to SpatialPoints and rasterised. See function documentation for more information.
+
+# 1.7.3 (17th July 2020)
+* Implemented type 'autocorrelated' and the calculation of probability intervals in add_dem_error
+
+# 1.7.2 (7th July 2020)
+* Implemented add_dem_error. See function documentation for more information and usage
+
+# 1.6.2 (6th July 2020)
+* Modified how lcp_density calculates which cells are covered by least cost paths. Instead of rasterising points (which can result in cells being missed), the least cost paths themselves are rasterised. 
+* Amended PDI_validation function to return area between lines
+
+# 1.6.1 (5th July 2020)
+* Implemented PDI_validation. See function documentation for more information and usage
+
+# 1.5.1 (4th July 2020)
+* Implemented crop_cs. See function documentation for more information and usage
+
+# 1.4.1 (5th June 2020)
+* Fixed create_stochastic_lcp when directional = FALSE. Now checks to ensure both Least Cost Paths are valid
+
+# 1.4.0 (4th June 2020)
+* Refactored code to enable greater flexibility
+* Added 32 and 48 neighbour matrices based on [Kovanen and Sarjakoski (2015)](https://doi.org/10.1145/2803172) (see leastcostpath::neighbours_32 and leastcostpath::neighbours_48 for their layout)
+* Implemented create_wide_lcp. Inspired by [Shirabe (2016)](https://doi.org/10.1080/13658816.2015.1124435)
+* Removed 'all' cost_function argument from create_slope_cs. 
+
+# 1.3.9 (1st June 2020)
+* Implemented create_stochastic_lcp. Based on the method proposed by Pinto and Keitt (2009). See function documentation for reference
+
+# 1.3.8 (1st June 2020)
+* Least Cost Paths created using the create_FETE_lcps are automaticaly ordered low-to-high cost if the cost_distance argument is TRUE 
+* Least Cost Paths created using the create_CCP_lcps are automically ordered low-to-high cost if the cost_distance argument is TRUE 
+* Least Cost Paths created using the create_banded_lcps are automically ordered low-to-high cost if the cost_distance argument is TRUE 
+
+# 1.3.7 (15th May 2020)
+* Fixed neighbour issue with cost_matrix 
+
 # 1.3.6 (13th May 2020)
 * Implemented cost_matrix to be used with the create_lcp_network nb_matrix argument 
 * Fixed error in create_slope_cs when using 16 neighbours
@@ -16,7 +55,7 @@
 # 1.2.3 (28 April 2020)
 * Added create_lcp_network vignette
 * Fixed create_lcp_density issue where raster values of 1 would become 0 when rescale is TRUE
-* Addded Tobler's offpath cost function
+* Added Tobler's offpath cost function
 * Added irmischer-clarke male/female cost function
 * Added irmischer-clarke offpath male/female cost function
 * Added llobera-sluckin cost function
@@ -49,11 +88,11 @@
 * Removal of validate_lcp, create_openness, and create_lcp_network - these will be re-added at a later date.
 
 # Version 0.1.4 (19 March 2019)
-* Split `leastcostpath` function into separate functions - allows for the building up of cost surfaces before computating least cost path
+* Split `leastcostpath` function into separate functions - allows for the building up of cost surfaces before computing least cost path
   * `create_slope_cs`
   * `create_traversal_cs`
   * `create_openness_cs`
-* Addition of openness cost surface creation
+  * Addition of openness cost surface creation
 
 # version 0.1.2 - Implemented cost when traversing across slope. 
 # version 0.1.1 - Implemented choice of directionality

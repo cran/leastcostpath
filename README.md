@@ -1,16 +1,26 @@
-leastcostpath - version 1.3.6 [![Build Status](https://travis-ci.org/josephlewis/leastcostpath.svg?branch=master)](https://travis-ci.org/josephlewis/leastcostpath)
+leastcostpath - version 1.7.4 [![Build Status](https://travis-ci.org/josephlewis/leastcostpath.svg?branch=master)](https://travis-ci.org/josephlewis/leastcostpath)
 [![CRAN status](https://www.r-pkg.org/badges/version/leastcostpath)](https://cran.r-project.org/package=leastcostpath)
 [![CRAN Downloads Month](https://cranlogs.r-pkg.org/badges/leastcostpath)](https://cranlogs.r-pkg.org/badges/leastcostpath)
-[![CRAN Downloads TOtal](https://cranlogs.r-pkg.org/badges/grand-total/leastcostpath)](https://cranlogs.r-pkg.org/badges/grand-total/leastcostpath)
+[![CRAN Downloads Total](https://cranlogs.r-pkg.org/badges/grand-total/leastcostpath)](https://cranlogs.r-pkg.org/badges/grand-total/leastcostpath)
 =============================
 
-The R library <b>leastcostpath</b> provides the functionality to calculate Least Cost Paths, which are often, but not exclusively, used in archaeological research. This library can be used to apply multiple cost functions when approximating the difficulty of moving across a landscape, as well as incorporating traversal <i>across</i> slope. Furthermore, attraction/repulsion of landscape features can be incorporated within the Least Cost Path calculation.
+The R library <b>leastcostpath</b> provides the functionality to calculate Cost Surfaces based on multiple cost functions that approximate the difficulty of moving across a landscape. Furthermore, the attraction/repulsion of landscape features can be incorporated into the Cost Surfaces, as well as barriers that inhibit movement. 
 
-This library also provides the functionality to calculate movement potential within a landscape through the implementation of From-Everywhere-to-Everywhere (FETE) (White and Barber, 2012), Cumulative Cost Paths (Verhagen, 2013), and Least Cost Path calculation within specified distance bands (Llobera, 2015). 
+Cost Surfaces can be used to calculate Least Cost Paths, which are often, but not exclusively, used in archaeological research. <b>leastcostpath</b> also provides the functionality to calculate movement potential within a landscape through the implementation of From-Everywhere-to-Everywhere (FETE) (White and Barber, 2012), Cumulative Cost Paths (Verhagen, 2013), and Least Cost Path calculation within specified distance bands (Llobera, 2015). Furthermore, the library allows for the calculation of stochastic least cost paths and wide least cost paths.
 
 Lastly, the library provides functionality to validate the accuracy of computed Least Cost Paths relative to another path. 
 
 This package is built on classes and functions provided in the R package gdistance (Van Etten, 2017). 
+
+*Functions currently in development:*
+
+* force_isotropy()
+
+*Functions recently added:*
+
+* crop_cs()
+* PDI_validation()
+* add_dem_error()
 
 Getting Started
 ---------------
@@ -32,11 +42,8 @@ Usage
     r <- raster::raster(system.file('external/maungawhau.grd', package = 'gdistance'))
         
     slope_cs <- create_slope_cs(r, cost_function = 'tobler')
-    traverse_cs <- create_traversal_cs(r)
-    final_cost_cs <- slope_cs * traverse_cs
     
     slope_cs_10 <- create_slope_cs(r, cost_function = 'tobler', max_slope = 10)
-    final_cost_cs_10 <- slope_cs_10 * traverse_cs
     
 #### Least Cost Path computation
 
@@ -46,15 +53,15 @@ Usage
     loc2 = cbind(2667800, 6479400)
     loc2 = sp::SpatialPoints(loc2)
 
-    lcps <- create_lcp(cost_surface = final_cost_cs, origin = loc1, destination = loc2, directional = FALSE)
+    lcps <- create_lcp(cost_surface = slope_cs, origin = loc1, destination = loc2, directional = FALSE)
   
-    plot(raster(final_cost_cs))
+    plot(raster(slope_cs))
     plot(lcps[1,], add = T, col = "red") # location 1 to location 2
     plot(lcps[2,], add = T, col = "blue") # location 2 to location 1
     
 #### Cost Corridors
 
-    cc <- create_cost_corridor(final_cost_cs, loc1, loc2)
+    cc <- create_cost_corridor(slope_cs, loc1, loc2)
     
     plot(cc)
     plot(loc1, add = T)
@@ -64,10 +71,10 @@ Usage
 
     locs <- sp::spsample(as(raster::extent(r), 'SpatialPolygons'),n=10,'regular')
     
-    lcp_network <- create_FETE_lcps(cost_surface = final_cost_cs, locations = locs,
+    lcp_network <- create_FETE_lcps(cost_surface = slope_cs, locations = locs,
     cost_distance = FALSE, parallel = FALSE)
     
-    plot(raster(final_cost_cs))
+    plot(raster(slope_cs))
     plot(locs, add = T)
     plot(lcp_network, add = T)
     
@@ -75,10 +82,10 @@ Usage
 
     locs <- sp::spsample(as(raster::extent(r), 'SpatialPolygons'),n=1,'random')
 
-    lcp_network <- create_CCP_lcps(cost_surface = final_cost_cs, location = locs, distance = 50,
+    lcp_network <- create_CCP_lcps(cost_surface = slope_cs, location = locs, distance = 50,
     radial_points = 10, cost_distance = FALSE, parallel = FALSE)
     
-    plot(raster(final_cost_cs))
+    plot(raster(slope_cs))
     plot(locs, add = T)
     plot(lcp_network, add = T)
     
@@ -86,10 +93,10 @@ Usage
 
     locs <- sp::spsample(as(raster::extent(r), 'SpatialPolygons'),n=1,'random')
 
-    lcp_network <- create_banded_lcps(cost_surface = final_cost_cs, location = locs, min_distance = 20,
+    lcp_network <- create_banded_lcps(cost_surface = slope_cs, location = locs, min_distance = 20,
     max_distance = 50, radial_points = 10, cost_distance = FALSE, parallel = FALSE)
     
-    plot(raster(final_cost_cs))
+    plot(raster(slope_cs))
     plot(locs, add = T)
     plot(lcp_network, add = T)
 
@@ -108,6 +115,30 @@ Usage
     lcp_network <- create_lcp_network(slope_cs, locations = locs, 
     nb_matrix = mat, cost_distance = FALSE, parallel = FALSE)
     
+#### Stochastic Least Cost Path
+
+    locs <- sp::spsample(as(raster::extent(r), 'SpatialPolygons'),n=2,'random')
+
+    stochastic_lcp <- replicate(n = 10, create_stochastic_lcp(cost_surface = slope_cs,
+    origin = locs[1,], destination = locs[2,], directional = FALSE))
+    
+    stochastic_lcp <- do.call(rbind, stochastic_lcp)
+
+#### Wide Least Cost Path
+
+    n <- 3
+
+    slope_cs <- create_slope_cs(r, cost_function = 'tobler', neighbours = wide_path_matrix(n))
+
+    loc1 = cbind(2667670, 6479000)
+    loc1 = sp::SpatialPoints(loc1)
+
+    loc2 = cbind(2667800, 6479400)
+    loc2 = sp::SpatialPoints(loc2)
+
+    lcps <- create_wide_lcp(cost_surface = slope_cs, origin = loc1,
+    destination = loc2, path_ncells = n)
+
 #### Pipes!
 
     cost_surface <- create_slope_cs(r, cost_function = 'tobler') %>%
@@ -170,7 +201,7 @@ Versioning
 -   version 1.2.3
       * Added create_lcp_network vignette
       * Fixed create_lcp_density issue where raster values of 1 would become 0 when rescale is TRUE      
-      * Addded Tobler offpath cost function
+      * Added Tobler offpath cost function
       * Added irmischer-clarke male/female cost function
       * Added irmischer-clarke offpath male/female cost function
       * Added llobera-sluckin cost function
@@ -186,6 +217,34 @@ Versioning
 -   version 1.3.6
       * Implemented cost_matrix to be used with the create_lcp_network nb_matrix argument
       * Fixed error in create_slope_cs when using 16 neighbours
+-   version 1.3.7
+      * Fixed neighbour issue with cost_matrix 
+-   version 1.3.8
+      * Least Cost Paths created using the create_FETE_lcps function are automatically ordered low-to-high cost if the cost_distance argument is TRUE 
+      * Least Cost Paths created using the create_CCP_lcps are automically ordered low-to-high cost if the cost_distance argument is TRUE 
+      * Least Cost Paths created using the create_banded_lcps are automically ordered low-to-high cost if the cost_distance argument is TRUE 
+-   version 1.3.9
+      * Implemented create_stochastic_lcp. Based on the method proposed by Pinto and Keitt (2009). See function documentation for reference.
+-   version 1.4.0
+      * Refactored code to enable greater flexibility
+      * Added 32 and 48 neighbour matrices based on [Kovanen and Sarjakoski (2015)](https://doi.org/10.1145/2803172) (see leastcostpath::neighbours_32 and leastcostpath::neighbours_48 for their layout)
+      * Implemented create_wide_lcp. Inspired by [Shirabe (2016)](https://doi.org/10.1080/13658816.2015.1124435)
+      * Removed 'all' cost_function argument from create_slope_cs. 
+-   version 1.4.1
+      * Fixed create_stochastic_lcp when directional = FALSE. Now checks to ensure both Least Cost Paths are valid.
+-   version 1.5.1
+      * Implemented crop_cs. See function documentation for more information and usage
+-   version 1.6.1
+      * Implemented PDI_validation. See function documentation for more information and usage
+-   version 1.6.2
+      * Modified how lcp_density calculates which cells are covered by least cost paths. Instead of rasterising points (which can result in             cells being missed), the least cost paths themselves are rasterised. 
+      * Amended PDI_validation function to return area between lines
+-   version 1.7.2
+      * Implemented add_dem_error. See function documentation for more information and usage
+-   version 1.7.3
+      * Implemented type 'autocorrelated' and the calculation of probability intervals in add_dem_error
+-   version 1.7.4
+      * Allow for the rasterisation of SpatialLines in create_lcp_density through the rasterize_as_points argument. If FALSE, SpatialLines are rasterised. If TRUE, SpatialLines converted to SpatialPoints and rasterised. See function documentation for more information.
       
 Authors
 -------
@@ -197,4 +256,5 @@ Citation
 
 Please cite as:
 
-    Lewis, J. (2020) leastcostpath: Modelling Pathways and Movement Potential Within a Landscape (version 1.3.6)
+    Lewis, J. (2020) leastcostpath: Modelling Pathways and Movement Potential Within a Landscape (version 1.7.4). 
+    Available at: https://cran.r-project.org/web/packages/leastcostpath/index.html
