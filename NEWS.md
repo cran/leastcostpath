@@ -1,3 +1,44 @@
+# 1.8.0 (9th February 2021)
+* Modified create_FETE_lcps(), create_CCP_lcps(), create_banded_lcps(), create_lcp_network() and to only return LCPs that can be calculated. This ensures there are no SpatialLines with zero length. Number of LCPs removed and supplied locations with issues are indicated to the user. 
+* Updated leastcostpath-1 vignette
+
+# 1.7.9 (9th January 2021)
+* Implemented create_distance_cs(). Cost Surface based on distance between neighbouring cells. 
+* Optimised create_slope_cs() - speed increased by 700%:
+  * Vectorised the calculation of slope (rise / run). Function no longer relies on apply() to calculate the difference in elevation.
+  * Replacement of values in TransitionMatrix above/below max_slope now calculated using logical booleans
+* Optimised create_barrier_cs() - speed increased by 200%
+  * Used raster::cellFromPolygon and assigned values by Indexing rather than creating TransitionMatrix from rasterised Polygon (via raster::rasterize)
+* Optimise crop_cs() - speed increased by 111,439%
+  * Used raster::cellFromPolygon and assigned values by Indexing based on adjacency rather than the total TransitionMatrix columns
+* create_barrier_cs and crop_cs now allow SpatialPoints, SpatialLines, SpatialPolygons, and RasterLayer objects as barriers/boundaries
+* create_barrier_cs can now use a RasterLayer barrier as a 'mask' when assigning values to barrier cost surface
+* add_dem_error now allows user to specify size of window when applying spatial autocorrelation to the error field
+  
+
+# 1.7.8 (13th November 2020)
+* Fixed issue in PDI_validation where Area is zero. Now returns a SpatialLinesDataFrame. 
+* Removed snap argument in PDI_validation. This is to reflect that the origin and destination coordinates of the two SpatialLines need to be identical for the method to work. 
+* Added reverse argument to PDI_validation. If reverse equals TRUE, then reverse order of comparison coordinates. This is ensure that the order of coordinates is correct when creating the polygon between the two SpatialLines. 
+* Added transitionFunction argument to create_barrier_cs. This is to allow users to specify how  transition values from centre cells to adjacent cells are calculated.
+* Corrected create_traversal_cs to account for when traversal across slope angle is above 90 degrees. Rather than setting value to 1, the correct value is calculated.
+
+# 1.7.7 (4th November 2020)
+* Implemented Campbell (2019) cost functions based on  crowdsourced GPS travel rate records. [Campbell (2019)](https://doi.org/10.1016/j.apgeog.2019.03.008)
+* Amended 'herzog' (2013) cost function to use absolute slope value. 
+* Amended cost surfaces for "tobler", "tobler offpath", "irmischer-clarke male", "irmischer-clarke offpath male", "irmischer-clarke female", "irmischer-clarke offpath female", "modified tobler", and "campbell 2019" to return speed values in seconds.
+* lcp cost distance now reported in seconds when "tobler", "tobler offpath", "irmischer-clarke male", "irmischer-clarke offpath male", "irmischer-clarke female", "irmischer-clarke offpath female", "modified tobler", and "campbell 2019" cost functions are used. 
+
+# 1.7.6 (27th October 2020)
+* Fixed issue in PDI_Validation where SpatialPolygon was not created properly due to SpatialPoints not being seen as identical. Corrected by removing header name via base::unname.
+* Fixed issue in PDI_Validation where SpatialPolygon has an Area of Zero and so is not a 'true' Polygon. In the case, PDI_validation returns a SpatialPolygon with data.frame containing an Area and PDI value of Zero.
+* Implemented snap argument in PDI_validation. If TRUE, this snaps the Origin and Destination points of the Least Cost Path to the Origin and Destination points of the comparison SpatialLine. This ensures that the SpatialPolygon that is returned is valid as the Origin and Destination points of the Least Cost Path is the centre of the Raster cell whilst the Origin and Destination of the comparison SpatialLine is not restricted by the Raster Grid.
+* Added field argument to create_barrier_cs(). This now allows for the user to specify the conductivity of areas that coincide with the barrier SpatialObject.
+
+# 1.7.5 (4th September 2020)
+* Fixed issue with create_banded_lcps and create_CCP_lcps to filter to first SpatialPoint in the supplied SpatialPoints* 
+* Implemented geographical slant in create_slope_cs. See function documentation for more information.
+
 # 1.7.4 (17th July 2020)
 * Allow for the rasterisation of SpatialLines in create_lcp_density through the rasterize_as_points argument. If FALSE, SpatialLines are rasterised. If TRUE, SpatialLines converted to SpatialPoints and rasterised. See function documentation for more information.
 

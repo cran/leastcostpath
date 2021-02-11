@@ -1,8 +1,8 @@
 Package: leastcostpath
 Title: Modelling Pathways and Movement Potential Within a Landscape
-        (Version 1.7.4)
-Version: 1.7.4
-Date: 2020-07-17
+        (Version 1.8.0)
+Version: 1.8.0
+Date: 2021-02-09
 Authors@R: person("Joseph", "Lewis", email = "josephlewis1992@gmail.com", role = c("aut", "cre"))
 Maintainer: Joseph Lewis <josephlewis1992@gmail.com>
 URL: Available at: https://CRAN.R-project.org/package=leastcostpath
@@ -10,15 +10,15 @@ Description: Provides functionality to calculate cost surfaces based on slope (e
 Depends: R (>= 3.4.0)
 Imports: gdistance (>= 1.2-2), raster (>= 2.6-7), rgdal (>= 1.3-3),
         rgeos (>= 0.3-28), sp (>= 1.3-1), parallel (>= 3.4-1), pbapply
-        (>= 1.4-2), methods, stats
-License: GPL (>= 2)
+        (>= 1.4-2), methods, stats, Matrix
+License: GPL-3
 Encoding: UTF-8
 LazyData: true
-Suggests: knitr, rmarkdown, spdep (>= 1.1-3), Matrix
-RoxygenNote: 7.1.0
+Suggests: knitr, rmarkdown, spdep (>= 1.1-3)
+RoxygenNote: 7.1.1
 VignetteBuilder: knitr
 NeedsCompilation: no
-Packaged: 2020-07-17 09:57:29 UTC; Joe
+Packaged: 2021-02-11 21:37:21 UTC; Joe
 Author: Joseph Lewis [aut, cre]
 Repository: CRAN
-Date/Publication: 2020-07-17 11:00:03 UTC
+Date/Publication: 2021-02-11 22:10:02 UTC

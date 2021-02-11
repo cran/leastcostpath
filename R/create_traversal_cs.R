@@ -41,51 +41,49 @@ create_traversal_cs <- function(dem, neighbours = 16) {
         
     }
     
-    trans <- gdistance::transition(dem, transitionFunction = function(x) {
-        0
-    }, neighbours, symm = FALSE)
+    aspect <- raster::terrain(dem, opt = "aspect", unit = "degrees", neighbors = 8)
     
-    aspect_dem <- raster::terrain(dem, opt = "aspect", unit = "degrees", neighbors = 8)
+    aspect[aspect > 180] <- aspect[aspect > 180] - 180
     
-    aspect_dem[aspect_dem >= 0 & aspect_dem <= 90] <- aspect_dem[aspect_dem >= 0 & aspect_dem <= 90] + 90
+    traverse <- aspect
     
-    aspect_dem[aspect_dem > 90 & aspect_dem <= 180] <- aspect_dem[aspect_dem > 90 & aspect_dem <= 180] - 90
-    
-    aspect_dem[aspect_dem > 180 & aspect_dem <= 270] <- aspect_dem[aspect_dem > 180 & aspect_dem <= 270] - 90
-    
-    aspect_dem[aspect_dem > 270 & aspect_dem <= 360] <- (aspect_dem[aspect_dem > 270 & aspect_dem <= 360] + 90) - 360
+    traverse[aspect >= 0 & aspect < 90] <- aspect[aspect >= 0 & aspect < 90] - 90
+    traverse[aspect >= 90] <- aspect[aspect >= 90] - 90
     
     altDiff_traversal <- function(x) {
-        if (abs(x[2] - x[1]) == 0) {
-            1
-        } else if (x[2] > x[1]) {
-            if (abs(x[2] - x[1]) > 0 & abs(x[2] - x[1]) <= 45) {
-                hrma <- abs(x[2] - x[1])
-                1 + (0.5/45) * hrma
-            } else if (abs(x[2] - x[1]) > 45 & abs(x[2] - x[1]) <= 90) {
-                hrma <- abs(x[2] - x[1])
-                2 - (0.5/45) * hrma
-            } else {
-                1
+        altDiff <- abs(x[2]) - abs(x[1])
+        
+        if (altDiff == 0) {
+            traversal <- 1
+        } else if (altDiff > 0) {
+            if (altDiff > 0 & altDiff <= 45) {
+                hrma <- abs(altDiff)
+                traversal <- 1 + (0.5/45) * hrma
+                
+            } else if (altDiff > 45 & altDiff <= 90) {
+                hrma <- abs(altDiff)
+                traversal <- 2 - (0.5/45) * hrma
+                
             }
-        } else if (x[2] < x[1]) {
-            if (abs(x[2] - x[1]) > 0 & abs(x[2] - x[1]) <= 45) {
-                hrma <- abs(x[2] - x[1])
-                1 - (0.5/45) * hrma
-            } else if (abs(x[2] - x[1]) > 45 & abs(x[2] - x[1]) <= 90) {
-                hrma <- abs(x[2] - x[1])
-                (0.5/45) * hrma
-            } else {
-                1
+            
+        } else if (altDiff < 0) {
+            if (altDiff < 0 & altDiff >= -45) {
+                hrma <- abs(altDiff)
+                traversal <- 1 - (0.5/45) * hrma
+                
+            } else if (altDiff < -45 & altDiff >= -90) {
+                hrma <- abs(altDiff)
+                
+                traversal <- (0.5/45) * hrma
+                
             }
+            
         }
+        
+        return(traversal)
     }
     
-    trans_aspect <- gdistance::transition(aspect_dem, altDiff_traversal, neighbours, symm = FALSE)
+    trans_aspect <- gdistance::transition(traverse, altDiff_traversal, neighbours, symm = FALSE)
     
-    adj <- raster::adjacent(dem, cells = 1:raster::ncell(dem), pairs = TRUE, directions = neighbours)
-    
-    trans[adj] <- trans_aspect[adj]
-    
-    return(trans)
+    return(trans_aspect)
 }
