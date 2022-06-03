@@ -1,24 +1,25 @@
-leastcostpath - version 1.8.0 [![Build Status](https://travis-ci.org/josephlewis/leastcostpath.svg?branch=master)](https://travis-ci.org/josephlewis/leastcostpath)
+leastcostpath - version 1.8.7 [![Build Status](https://travis-ci.org/josephlewis/leastcostpath.svg?branch=master)](https://travis-ci.org/josephlewis/leastcostpath)
 [![CRAN status](https://www.r-pkg.org/badges/version/leastcostpath)](https://cran.r-project.org/package=leastcostpath)
 [![CRAN Downloads Month](https://cranlogs.r-pkg.org/badges/leastcostpath)](https://cranlogs.r-pkg.org/badges/leastcostpath)
 [![CRAN Downloads Total](https://cranlogs.r-pkg.org/badges/grand-total/leastcostpath)](https://cranlogs.r-pkg.org/badges/grand-total/leastcostpath)
 =============================
 
-The R library <b>leastcostpath</b> provides the functionality to calculate Cost Surfaces based on multiple cost functions that approximate the difficulty of moving across a landscape. Furthermore, the attraction/repulsion of landscape features can be incorporated into the Cost Surfaces, as well as barriers that inhibit movement.
+The <b>leastcostpath</b> is built on the classes and functions provided in the R package gdistance (Van Etten, 2017).
 
 **NOTE:** The R library <b>leastcostpath</b> requires the use of projected coordinate systems. The package does not account for geographic coordinate systems.
 
-Cost Surfaces can be used to calculate Least Cost Paths, which are often, but not exclusively, used in archaeological research. <b>leastcostpath</b> also provides the functionality to calculate movement potential within a landscape through the implementation of From-Everywhere-to-Everywhere (FETE) (White and Barber, 2012), Cumulative Cost Paths (Verhagen, 2013), and Least Cost Path calculation within specified distance bands (Llobera, 2015). Furthermore, the library allows for the calculation of stochastic least cost paths and wide least cost paths.
+<b>leastcostpath</b> provides the functionality to calculate Least Cost Paths (LCPs) using numerous time- and energy-based cost functions that approximate the difficulty of moving across a landscape. Additional cost surfaces can be incorporated into the analysis via create_barrier_cs() or create_feature_cs().
 
-Lastly, the library provides functionality to validate the accuracy of computed Least Cost Paths relative to another path. 
+<b>leastcostpath</b> also provides the functionality to calculate Stochastic Least Cost Paths (Pinto and Keitt, 2009), and Probabilistic Least Cost Paths (Lewis, 2020).
 
-This package is built on classes and functions provided in the R package gdistance (Van Etten, 2017). 
+<b>leastcostpath</b> also provides the functionality to calculate movement potential within a landscape through the implementation of From-Everywhere-to-Everywhere (White and Barber, 2012), Cumulative Cost Paths (Verhagen 2013), and Least Cost Path calculation within specified distance bands (Llobera, 2015).
+
+Lastly, <b>leastcostpath</b> provides the functionality to validate the accuracy of the computed Least Cost Path relative to another path via validate_lcp() (Goodchild and Hunter, 1997) and PDI_validation() (Jan et al. 1999).
 
 *Functions currently in development:*
-* force_isotropy()
 
 *Functions recently added:*
-* create_distance_cs()
+* check_locations()
 
 Getting Started
 ---------------
@@ -134,7 +135,7 @@ Usage
     
     for (i in 1:n) {
     
-    lcps[[i]] <- leastcostpath::create_lcp(cost_surface = leastcostpath::create_slope_cs(dem = leastcostpath::add_dem_error(dem = r, rmse = RMSE, type = "autocorrelated"), cost_function = "tobler", neighbours = 16), origin = locs[1,], destination = locs[2,], directional = FALSE, cost_distance = TRUE)
+    lcps[[i]] <- leastcostpath::create_lcp(cost_surface = leastcostpath::create_slope_cs(dem = leastcostpath::add_dem_error(dem = r, rmse = RMSE, size = "auto", vgm_model = "Sph"), cost_function = "tobler", neighbours = 16), origin = locs[1,], destination = locs[2,], directional = FALSE, cost_distance = TRUE)
     
     }
     
@@ -161,18 +162,23 @@ Common Errors
     Error in if (is.numeric(v) && any(v < 0)) { : 
     missing value where TRUE/FALSE needed
     
-Error caused when trying to calculate a Least Cost Path using SpatialPoints outside of the Cost Surface Extent
-  * Check SpatialPoints used in the LCP calculation coincide with Raster / Cost Surface
-  * Check coordinate systems of the Raster/Cost Surface is the same as the SpatialPoints
+Error caused when trying to calculate a Least Cost Path using SpatialPoints outside of the Cost Surface Extent:
   
-    ```Error in get.shortest.paths(adjacencyGraph, indexOrigin, indexGoal):```
-    ```At structural_properties.c:4521 :```
-    ```Weight vector must be non-negative, Invalid value```
+  1. Check SpatialPoints used in the LCP calculation coincide with Raster / Cost Surface
+  
+  2. Check coordinate system of the Raster/Cost Surface is the same as the SpatialPoints
+  
+
+    Error in get.shortest.paths(adjacencyGraph, indexOrigin, indexGoal):
+    At structural_properties.c:4521 :
+    Weight vector must be non-negative, Invalid value
     
-Error caused when calculating a Least Cost Path using a  Cost Surface that contains negative values. Error due to Djikstra's algorithm requiring non-negative values
-  * Check if there are negative values via: 
+Error caused when calculating a Least Cost Path using a  Cost Surface that contains negative values. Error due to Djikstra's algorithm requiring non-negative values:
+
+  1. Check if there are negative values via: 
   
-      ```quantile(*your_cost_surface*@transitionMatrix@x)```
+    
+    quantile(*your_cost_surface*@transitionMatrix@x)
       
 Contributing
 --------
@@ -195,10 +201,16 @@ Please submit issues and enhancement requests via github Issues
 Case Studies Using _leastcostpath_
 --------
 
-Lewis, J. Probabilistic Modelling using Monte Carlo Simulation for Incorporating Uncertainty in Least Cost Path Results: a Roman Road Case Study, Peer Community in Archaeology, 100005. [10.24072/pci.archaeo.100005](https://doi.org/10.24072/pci.archaeo.100005)
+Fjellström, M., Seitsonen, O., Wallén, H., 2022. Mobility in Early Reindeer Herding, in: Salmi, A.-K. (Ed.), Domestication in Action, Arctic Encounters. Springer International Publishing, Cham, pp. 187–212. https://doi.org/10.1007/978-3-030-98643-8_7
 
-Ludwig, B. Reconstructing the Ancient Route Network in Pergamon's Surroundings. Land 2020, 9, 241. [https://doi.org/10.3390/land9080241](https://doi.org/10.3390/land9080241)
-    
+Field, S., Glowacki, D.M., Gettler, L.T., 2022. The Importance of Energetics in Archaeological Least Cost Analysis. J Archaeol Method Theory. https://doi.org/10.1007/s10816-022-09564-8
+
+Herzog, I., 2022. Issues in Replication and Stability of Least-cost Path Calculations. SDH 5, 131–155. https://doi.org/10.14434/sdh.v5i2.33796
+
+Lewis, J., 2021. Probabilistic Modelling for Incorporating Uncertainty in Least Cost Path Results: a Postdictive Roman Road Case Study. Journal of Archaeological Method and Theory. https://doi.org/10.1007/s10816-021-09522-w
+
+Ludwig, B., 2020. Reconstructing the Ancient Route Network in Pergamon’s Surroundings. Land 9, 241. https://doi.org/10.3390/land9080241
+
 Versioning
 ----------
 
@@ -214,5 +226,5 @@ Citation
 
 Please cite as:
 
-    Lewis, J. (2020) leastcostpath: Modelling Pathways and Movement Potential Within a Landscape (version 1.8.0). 
+    Lewis, J. (2022) leastcostpath: Modelling Pathways and Movement Potential Within a Landscape (version 1.8.7). 
     Available at: https://cran.r-project.org/web/packages/leastcostpath/index.html

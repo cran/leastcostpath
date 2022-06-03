@@ -1,3 +1,32 @@
+# 1.8.7 (22nd May 2022)
+* Fix error in check_locations. now returns number of points not traversable by LCP
+
+# 1.8.6 (11th April 2022)
+* Fixed CRAN issue with loaded data from gdistance
+* Removed probabilistic LCP example from vignette. Will replace at later date. See README for usage
+
+# 1.8.5 (10th December 2021)
+* Added check_locations() function to check whether locations are traversable from at least one adjacent cell 
+
+# 1.8.4 (10th November 2021)
+* Corrected "campbell 2019" cost function to calculate cost using slope in degrees rather than radians
+* Updated vignette with validation methods
+* Simplified PDI_validation. Now requires for origin and destination of lcp and comparison to be in the same order.
+* Fixed add_dem_error error when trying to access supplied DEM name.
+
+# 1.8.3 (17th September 2021)
+* Allow users to specify number of cores to be used when using create_FETE_LCPS, create_banded_lcps, create_CCP_lcps, and create_lcp_network functions
+
+# 1.8.2 (15th May 2021)
+* Added force_isotropy() function to force anisotropic cost surfaces to isotropic 
+* size of window in add_dem_error() can now be automatically calculated using the "auto" argument in size
+* Removed 'unfiltered' autocorrelation type in add_dem_error()
+
+# 1.8.1 (1st April 2021)
+* Corrected default type in add_dem() to be 'autocorrelated'. 
+* Exported calculate_slope() to be a user-visible function.
+* Exported apply_cost() to be a user-visible function. 
+
 # 1.8.0 (9th February 2021)
 * Modified create_FETE_lcps(), create_CCP_lcps(), create_banded_lcps(), create_lcp_network() and to only return LCPs that can be calculated. This ensures there are no SpatialLines with zero length. Number of LCPs removed and supplied locations with issues are indicated to the user. 
 * Updated leastcostpath-1 vignette
@@ -14,7 +43,6 @@
 * create_barrier_cs and crop_cs now allow SpatialPoints, SpatialLines, SpatialPolygons, and RasterLayer objects as barriers/boundaries
 * create_barrier_cs can now use a RasterLayer barrier as a 'mask' when assigning values to barrier cost surface
 * add_dem_error now allows user to specify size of window when applying spatial autocorrelation to the error field
-  
 
 # 1.7.8 (13th November 2020)
 * Fixed issue in PDI_validation where Area is zero. Now returns a SpatialLinesDataFrame. 

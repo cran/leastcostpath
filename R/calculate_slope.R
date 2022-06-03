@@ -6,7 +6,7 @@
 #'
 #' @param exaggeration \code{logical}. if TRUE, positive slope values (ie. up-hill movement) multiplied by 1.99 and negative slope values (ie. down-hill movement) multiplied by 2.31.
 #'
-#' @noRd
+#' @return \code{TransitionMatrix} (gdistance package). Anisotropic Slope (rise over run) Conductivity surface
 #'
 #' @import rgdal
 #' @import rgeos
@@ -16,10 +16,12 @@
 #' @importFrom stats runif
 #'
 #' @author Joseph Lewis
+#'
+#' @export
 
-calculate_slope <- function(dem, neighbours, exaggeration = exaggeration) {
+calculate_slope <- function(dem, neighbours, exaggeration) {
     
-    hd <- transition_slope(x = dem, neighbours)
+    hd <- transition_slope(x = dem, neighbours = neighbours)
     
     slope <- gdistance::geoCorrection(hd, scl = FALSE)
     
@@ -32,5 +34,3 @@ calculate_slope <- function(dem, neighbours, exaggeration = exaggeration) {
     return(slope)
     
 }
-
-
