@@ -2,49 +2,39 @@
 % Please edit documentation in R/create_FETE_lcps.R
 \name{create_FETE_lcps}
 \alias{create_FETE_lcps}
-\title{Calculate least cost paths from each location to all other locations.}
+\title{Calculate Least-cost Paths from each location to all other locations}
 \usage{
-create_FETE_lcps(
-  cost_surface,
-  locations,
-  cost_distance = FALSE,
-  parallel = FALSE,
-  ncores = 1
-)
+create_FETE_lcps(x, locations, cost_distance = FALSE, ncores = 1)
 }
 \arguments{
-\item{cost_surface}{\code{TransitionLayer} (gdistance package). Cost surface to be used in Least Cost Path calculation}
+\item{x}{\code{conductanceMatrix}}
 
-\item{locations}{\code{SpatialPoints*} (sp package). Locations to calculate Least Cost Paths from and to}
+\item{locations}{\code{sf} 'POINT' or 'MULTIPOINT', \code{SpatVector}, \code{data.frame} or \code{matrix} containing the locations coordinates}
 
-\item{cost_distance}{\code{logical}. if TRUE computes total accumulated cost for each Least Cost Path. Default is FALSE}
+\item{cost_distance}{\code{logical} if TRUE computes total accumulated cost from origin to destination. FALSE (default)}
 
-\item{parallel}{\code{logical}. if TRUE, the Least Cost Paths will be calculated in parallel. Default is FALSE}
-
-\item{ncores}{\code{numeric}. Number of cores used if parallel is TRUE. Default value is 1.}
+\item{ncores}{\code{numeric} Number of cores used when calculating least-cost paths from-everywhere-to-everywhere. 1 (default)}
 }
 \value{
-\code{SpatialLinesDataFrame} (sp package). The resultant object contains least cost paths calculated from each location to all other locations
+\code{sf} or \code{spatVector} Least-cost paths from-everywhere-to-everywhere based on the supplied \code{conductanceMatrix}. If supplied \code{locations} is a \code{spatVector} object then \code{spatVector} object returned else \code{sf} object
 }
 \description{
-Calculates least cost paths from each location to all other locations (i.e. From Everywhere To Everywhere (FETE)). This is based on the method proposed by White and Barber (2012).
+Calculates Least-cost paths from-everywhere-to-everywhere. This is based on the approach proposed by White and Barber (2012).
 }
 \examples{
 
-r <- raster::raster(nrow=50, ncol=50,  xmn=0, xmx=50, ymn=0, ymx=50,
-crs='+proj=utm')
+r <- terra::rast(system.file("extdata/SICILY_1000m.tif", package="leastcostpath"))
 
-r[] <- stats::runif(1:length(r))
+slope_cs <- create_slope_cs(x = r, cost_function = "tobler", neighbours = 4)
 
-slope_cs <- create_slope_cs(r, cost_function = 'tobler')
+locs <- sf::st_sf(geometry = sf::st_sfc(
+sf::st_point(c(839769, 4199443)),
+sf::st_point(c(1038608, 4100024)),
+sf::st_point(c(907695, 4145478)),
+sf::st_point(c(907695, 4145478)),
+crs = terra::crs(r)))
 
-locs <- sp::spsample(as(raster::extent(r), 'SpatialPolygons'),n=5,'regular')
-
-lcp_network <- create_FETE_lcps(cost_surface = slope_cs, locations = locs,
-cost_distance = FALSE, parallel = FALSE)
-}
-\references{
-White, DA. Barber, SB. (2012). Geospatial modeling of pedestrian transportation networks: a case study from precolumbian Oaxaca, Mexico. J Archaeol Sci 39:2684-2696. \doi{10.1016/j.jas.2012.04.017}
+lcps <- create_FETE_lcps(x = slope_cs, locations = locs)
 }
 \author{
 Joseph Lewis

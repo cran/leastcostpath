@@ -1,66 +1,74 @@
-#' Create a Distance based cost surface
+#' Creates a distance-based conductance matrix
+#' 
+#' Creates a conductance matrix based on the distance between neighbouring cells. Distance corrected for if neighbours value is greater than 4.
+#' 
+#' @param x \code{SpatRaster}. Digital Elevation Model (DEM)
 #'
-#' Creates a cost surface based on the distance between neighbouring cells. Distance corrected for if neighbours value greater than 4 (diagonal distance greater than straight line distance). Distance units are derived from the maximum resolution of the supplied RasterLayer.
+#' @param neighbours \code{numeric} value. Number of directions used in the conductance matrix calculation. Expected numeric values are 4, 8, 16, 32, 48, or matrix object. 16 (default)
 #'
-#' @param raster \code{RasterLayer} (raster package).
+#' @param max_slope \code{numeric} value. Maximum percentage slope that is traversable. Slope values that are greater than the specified max_slope are given a conductivity value of 0. If cost_function argument is 'campbell 2019' then max_slope is fixed at 30 degrees slope to reflect the maximum slope that the cost function is parametised to. NULL (default)
 #'
-#' @param neighbours \code{numeric} value. Number of neighbouring cells. See Huber and Church (1985) for methodological considerations when choosing number of neighbours. Expected numeric values are 4, 8, 16, 32, 48 or a matrix object. Default is numeric value 16
+#' @param exaggeration \code{logical}. if TRUE, positive slope values (up-hill movement) multiplied by 1.99 and negative slope values (down-hill movement) multiplied by 2.31
 #'
-#' @return \code{TransitionLayer} (gdistance package) numerically expressing the distance between neighbouring cells
+#' @return \code{conductanceMatrix} that numerically expresses the difficulty of moving across slope based on the provided cost function
 #'
 #' @author Joseph Lewis
 #'
-#' @import rgdal
-#' @import rgeos
-#' @import sp
-#' @import raster
-#' @import gdistance
-#'
 #' @export
-#'
-#' @examples
-#' r <- raster::raster(system.file('external/maungawhau.grd', package = 'gdistance'))
-#' distance_cs <- create_distance_cs(r, neighbours = 16)
+#' 
+#' @examples 
+#' 
+#' r <- terra::rast(system.file("extdata/SICILY_1000m.tif", package="leastcostpath"))
+#' 
+#' distance_cs <- create_distance_cs(x = r, neighbours = 4)
 
-create_distance_cs <- function(raster, neighbours = 16) {
-    
-    distance_correction <- neighbours > 4
-    
-    if (!inherits(raster, "RasterLayer")) {
-        stop("raster argument is invalid. Expecting a RasterLayer object")
-    }
-    
-    if (any(!neighbours %in% c(4, 8, 16, 32, 48)) & (!inherits(neighbours, "matrix"))) {
-        stop("neighbours argument is invalid. Expecting 4, 8, 16, 32, 48, or matrix object")
-    }
-    
-    tr <- new("TransitionLayer", nrows = as.integer(nrow(raster)), ncols = as.integer(ncol(raster)), extent = extent(raster), crs = projection(raster, 
-        asText = FALSE), transitionMatrix = Matrix(0, ncell(raster), ncell(raster)), transitionCells = 1:ncell(raster))
-    transitionMatr <- transitionMatrix(tr)
-    Cells <- which(!is.na(getValues(raster)))
-    
-    if (inherits(neighbours, "numeric")) {
-        if (neighbours == 32) {
-            neighbours <- neighbours_32
-            
-        } else if (neighbours == 48) {
-            neighbours <- neighbours_48
-        }
-        
-    }
-    
-    adj <- adjacent(raster, cells = Cells, pairs = TRUE, target = Cells, directions = neighbours)
-    adj <- adj[adj[, 1] < adj[, 2], ]
-    transition.values <- 1
-    transitionMatr[adj] <- as.vector(transition.values)
-    transitionMatr <- forceSymmetric(transitionMatr)
-    transitionMatrix(tr) <- transitionMatr
-    matrixValues(tr) <- "conductance"
-    
-    if (distance_correction) {
-        tr <- gdistance::geoCorrection(tr, scl = FALSE)
-    }
-    
-    return(tr)
-    
+create_distance_cs <- function(x, neighbours = 16, max_slope = NULL, exaggeration = FALSE) { 
+  
+  neighbours <- neighbourhood(neighbours = neighbours)
+  
+  cells <- which(!is.na(terra::values(x)))
+  na_cells <- which(is.na(terra::values(x)))
+  
+  adj <- terra::adjacent(x = x, cells = cells, directions = neighbours, pairs = TRUE)
+  adj <- adj[!adj[,2] %in% na_cells,]
+  
+  elev_values <- terra::values(x)[,1]
+  
+  rise <- (elev_values[adj[,2]] - elev_values[adj[,1]])
+  run <- calculate_distance(x = x, adj = adj)
+  
+  mathematical_slope <- rise/run
+  
+  if(exaggeration) { 
+    mathematical_slope <- ifelse(mathematical_slope > 0, mathematical_slope * 1.99, mathematical_slope * 2.31)
+  }
+  
+  ncells <- length(cells) + length(na_cells)
+  
+  conductance <- run
+  
+  if(!is.null(max_slope)) {
+    max_slope <- max_slope/100
+    index <- abs(mathematical_slope) >= max_slope
+    conductance[index] <- 0
+  }
+  
+  cs_matrix <- Matrix::Matrix(data = 0, nrow = ncells, ncol = ncells)
+  cs_matrix[adj] <- conductance
+  
+  cs <- list("conductanceMatrix" = cs_matrix, 
+             "costFunction" = "distance",
+             "maxSlope" = ifelse(!is.null(max_slope), paste0(max_slope*100, "%"), NA), 
+             "exaggeration" = exaggeration,
+             "criticalSlope" = NA,             "extent" = as.vector(terra::ext(x)), 
+             "neighbours" = sum(neighbours, na.rm = TRUE), 
+             "nrow" = terra::nrow(x), 
+             "ncol" = terra::ncol(x), 
+             "extent" = as.vector(terra::ext(x)),
+             "crs" = terra::crs(x, proj = TRUE))
+  
+  class(cs) <- "conductanceMatrix"
+  
+  return(cs)
+  
 }

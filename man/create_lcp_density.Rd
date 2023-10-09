@@ -2,44 +2,38 @@
 % Please edit documentation in R/create_lcp_density.R
 \name{create_lcp_density}
 \alias{create_lcp_density}
-\title{Creates a cumulative Least Cost Path Raster}
+\title{creates a cumulative least-cost path raster}
 \usage{
-create_lcp_density(lcps, raster, rescale = FALSE, rasterize_as_points = TRUE)
+create_lcp_density(x, lcps, rescale = FALSE)
 }
 \arguments{
-\item{lcps}{\code{SpatialLines*} (sp package). Least Cost Paths}
+\item{x}{\code{SpatRaster}}
 
-\item{raster}{\code{RasterLayer} (raster package). This is used to derive the resolution, extent, and spatial reference system to be used when calculating the cumulative least cost path raster}
+\item{lcps}{\code{sf} or \code{spatVector}}
 
-\item{rescale}{\code{logical}. if TRUE, raster values scaled to between 0 and 1. Default is FALSE}
-
-\item{rasterize_as_points}{\code{logical}. if TRUE (default) then the coordinates of the Least Cost Path vertices are rasterised. If FALSE Least Cost Paths are represented as lines and rasterised. As the Least Cost Path SpatialLines are converted from vector to raster, the Least Cost Paths represented as lines may result in the width of the rasterized line being greater than one cell, particularly at places of diagonal movement. Conversely, the Least Cost Paths represented as points (default) will result in some raster cells not being counted in the resultant RasterLayer. A greater number of cells not counted is expected when the number of neighbours used when creating the cost surface increases. NOTE: rasterisation of Lines takes much longer than rasterizing points.}
+\item{rescale}{\code{logical}. if TRUE, values scaled to between 0 and 1. FALSE (default)}
 }
 \value{
-\code{RasterLayer} (raster package). The resultant object is the cumulatively combined Least Cost Paths. This identifies routes of preferential movement within the landscape.
+\code{SpatRaster}
 }
 \description{
-Cumulatively combines Least Cost Paths in order to identify routes of preferential movement within the landscape.
+Cumulatively combines least-cost paths to idenify routes of preferential movement
 }
 \examples{
 
-r <- raster::raster(nrow=50, ncol=50,  xmn=0, xmx=50, ymn=0, ymx=50, crs='+proj=utm')
+r <- terra::rast(system.file("extdata/SICILY_1000m.tif", package="leastcostpath"))
 
-r[] <- stats::runif(1:length(r))
+slope_cs <- create_slope_cs(x = r, cost_function = "tobler", neighbours = 4)
 
-slope_cs <- create_slope_cs(r, cost_function = 'tobler')
+locs <- sf::st_sf(geometry = sf::st_sfc(
+sf::st_point(c(839769, 4199443)),
+sf::st_point(c(1038608, 4100024)),
+sf::st_point(c(907695, 4145478)),
+crs = terra::crs(r)))
 
-x1 <- c(seq(1,10), seq(11,25), seq(26,30))
-y1 <- c(seq(1,10), seq(11,25), seq(26,30))
-line1 <- sp::SpatialLines(list(sp::Lines(sp::Line(cbind(x1,y1)), ID='a')))
+lcps <- create_FETE_lcps(x = slope_cs, locations = locs)
 
-x2 <- c(seq(1,10), seq(11,25), seq(26, 30))
-y2 <- c(seq(1,10), seq(11,25), rep(25, 5))
-line2 <- sp::SpatialLines(list(sp::Lines(sp::Line(cbind(x2,y2)), ID='b')))
-
-lcp_network <- rbind(line1, line2)
-
-cumulative_lcps <- create_lcp_density(lcps = lcp_network, raster = r, rescale = FALSE)
+lcps_dens <- create_lcp_density(x = r, lcps = lcps)
 }
 \author{
 Joseph Lewis

@@ -2,49 +2,47 @@
 % Please edit documentation in R/create_lcp.R
 \name{create_lcp}
 \alias{create_lcp}
-\title{Calculate Least Cost Path from Origin to Destination}
+\title{Calculate Least-cost Path from Origin to Destinations}
 \usage{
 create_lcp(
-  cost_surface,
+  x,
   origin,
   destination,
-  directional = FALSE,
-  cost_distance = FALSE
+  cost_distance = FALSE,
+  check_locations = FALSE
 )
 }
 \arguments{
-\item{cost_surface}{\code{TransitionLayer} (gdistance package). Cost surface to be used in Least Cost Path calculation}
+\item{x}{\code{conductanceMatrix}}
 
-\item{origin}{\code{SpatialPoints*} (sp package) location from which the Least Cost Path is calculated. Only the first row is taken into account}
+\item{origin}{\code{sf} 'POINT' or 'MULTIPOINT', \code{SpatVector}, \code{data.frame} or \code{matrix} containing the origin coordinates. Only the first row of the supplied object is used as the origin.}
 
-\item{destination}{\code{SpatialPoints*} (sp package) location to which the Least Cost Path is calculated. Only the first row is taken into account}
+\item{destination}{\code{sf} 'POINT' or 'MULTIPOINT', \code{SpatVector}, \code{data.frame} or \code{matrix} containing the destination coordinates. If the object contains multiple coordinates then least-cost paths will be calculated from the origin to all destinations}
 
-\item{directional}{\code{logical}. if TRUE Least Cost Path calculated from origin to destination only. If FALSE Least Cost Path calculated from origin to destination and destination to origin. Default is FALSE}
+\item{cost_distance}{\code{logical} if TRUE computes total accumulated cost from origin to the destinations. FALSE (default)}
 
-\item{cost_distance}{\code{logical}. if TRUE computes total accumulated cost for each Least Cost Path. Default is FALSE}
+\item{check_locations}{\code{logical} if TRUE checks if origin and destination are traversable by the least-cost path. FALSE (default)}
 }
 \value{
-\code{SpatialLinesDataFrame} (sp package) of length 1 if directional argument is TRUE or 2 if directional argument is FALSE. The resultant object is the shortest route (i.e. least cost) between origin and destination using the supplied \code{TransitionLayer}.
+\code{sf}  Least-cost path from origin and destinations based on the supplied \code{conductanceMatrix}
 }
 \description{
-Calculates a Least Cost Path from an origin location to a destination location. Applies Dijkstra's algorithm.
+Calculates the Least-cost path from an origin location to one or more destination locations. Applies Dijkstra's algorithm as implemented in the igraph R package.
 }
 \examples{
-r <- raster::raster(system.file('external/maungawhau.grd', package = 'gdistance'))
 
-slope_cs <- create_slope_cs(r, cost_function = 'tobler')
+r <- terra::rast(system.file("extdata/SICILY_1000m.tif", package="leastcostpath"))
 
-loc1 = cbind(2667670, 6479000)
-loc1 = sp::SpatialPoints(loc1)
+slope_cs <- create_slope_cs(x = r, cost_function = "tobler", neighbours = 4)
 
-loc2 = cbind(2667800, 6479400)
-loc2 = sp::SpatialPoints(loc2)
+locs <- sf::st_sf(geometry = sf::st_sfc(
+sf::st_point(c(839769, 4199443)),
+sf::st_point(c(1038608, 4100024)),
+sf::st_point(c(1017819, 4206255)),
+sf::st_point(c(1017819, 4206255)),
+crs = terra::crs(r)))
 
-lcps <- create_lcp(cost_surface = slope_cs, origin = loc1,
-destination = loc2, directional = FALSE, cost_distance = FALSE)
-}
-\references{
-Dijkstra, E. W. (1959). A note on two problems in connexion with graphs. Numerische Mathematik. 1: 269-271.
+lcps <- create_lcp(x = slope_cs, origin = locs[1,], destination = locs)
 }
 \author{
 Joseph Lewis

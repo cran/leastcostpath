@@ -2,31 +2,32 @@
 % Please edit documentation in R/add_dem_error.R
 \name{add_dem_error}
 \alias{add_dem_error}
-\title{Incorporate vertical error into Digital Elevation Model}
+\title{Incorporate vertical error into a Digital Elevation Model}
 \usage{
-add_dem_error(dem, rmse, size = "auto", vgm_model = "Sph")
+add_dem_error(x, rmse, type = "u", samples = NULL)
 }
 \arguments{
-\item{dem}{\code{RasterLayer} (raster package). Digital Elevation Model}
+\item{x}{\code{spatRaster}}
 
 \item{rmse}{\code{numeric}. Vertical Root Mean Square Error of the Digital Elevation Model}
 
-\item{size}{\code{character} or \code{numeric}. Size of window when applying mean filter to random error fields. Increasing the size of the window increases the spatial autocorreltion in the random error field. Size of window is automatically calculated via a variogram when argument is 'auto' (default). If size of window is user-supplied, then numeric value must be odd.}
+\item{type}{\code{character} type 'u' (unfiltered), 'n' (neighbourhood autocorrelation), and 'd' (mean spatial dependence) implemented. See details for more information}
 
-\item{vgm_model}{\code{character}. Variogram model type when determining window size. Accepted values are 'Sph' (default), 'Exp', 'Gau', 'Mat'. See details for more information}
-}
-\value{
-\code{raster} (raster package). Digital Elevation Model with a single realisation of vertical error incorporated
+\item{samples}{\code{numeric} number of random spatial data locations sampled when using type 'd'. This can be used to overcome issues with computing time and memory limits}
 }
 \description{
-Incorporates vertical error into the supplied Digital Elevation Model.
+Incorporate vertical error into a Digital Elevation Model
 }
 \details{
-Digital Elevation Models (DEMs) are representations of the earth's surface and are subject to error (Wechsler, 1999). However the impact of the error on the results of analyses is often not evaluated (Hunter and Goodchild, 1997; Wechsler, 1999).
+Digital Elevation Models (DEMs) are representations of the earth's surface and are subject to error (Wechsler and Kroll, 2006)
 
-The add_dem_error function incorporates vertical error into the supplied Digital Elevation Model by assuming that the error for each cell follows a gaussian (normal) distribution around the measured elevation value and the global Root Mean Square Error (RMSE) estimating the local error variance around this values (Fisher and Tate, 2006). Addition of spatial autocorrelation applied by using a mean-window filter based on a window size (Wechsler and Kroll, 2006). If size argument is 'auto' then window size calculated via a variogram (Wechsler and Kroll, 2006).
+The add_dem_error function incorporates vertical error into the supplied DEM. Three methods are implemented:
 
-vgm_model is the model fitted to the observed DEM variogram. This is used to calculate the distance at which spatial autocorrelation is no longer present (i.e. the range). If the vgm model type is not able to converge, try another model type (e.g. 'Gau').
+Unfiltered: Random error based on DEM RMSE range. Autocorrelation between random error is not accounted for. This can be interpreted as the worst case scenario
+
+Neighbourhood autocorrelation: Random error is spatially autocorrelated by passing a mean low pass filter in a 3x3 neighbourhood over the surface
+
+Mean Spatial Dependence: Random error is spatially autocorrelated by passing a DxD kernel over each cell. The centre cell of each kernel is replaced by the mean of the surrounding DxD cells. Distance of spatial dependence (D) is estimated by calcualting the semi-variogram nugget using the gstat package  
 
 Examples of RMSE for various datasets:
 
@@ -37,25 +38,19 @@ Advanced Spaceborne Thermal Emission and Reflection Radiometer (ASTER) Global Di
 Ordnance Survey OS Terrain 5 has a maximum RMSE of 2.5m
 
 Ordnance Survey OS Terrain 50 has a maximum RMSE of 4m
+
+TINITALY DEM has a RMSE of 4.3m
 }
 \examples{
 
-r <- raster::raster(system.file('external/maungawhau.grd', package = 'gdistance'))
+r <- terra::rast(system.file("extdata/SICILY_1000m.tif", package="leastcostpath"))
 
-r_error <- add_dem_error(r, rmse = 9.73, size = 'auto', vgm_model = 'Gau')
+r2 <- add_dem_error(x = r, rmse = 4.3, type = "u")
 }
 \references{
-Fisher, P. F., Tate, N. J. (2006). Causes and consequences of error in digital elevation models. Progress in Physical Geography, 30(4), 467-489.
+Wechsler, S. P., & Kroll, C. N. (2006). Quantifying DEM Uncertainty and its Effect on Topographic Parameters. Photogrammetric Engineering & Remote Sensing, 72(9), 1081-1090. https://doi.org/10.14358/PERS.72.9.1081
 
-Hunter, G. J., Goodchild, M. F. (1997). Modeling the uncertainty of slope and aspect estimates derived from spatial databases. Geographical Analysis, 29: 35-49.
-
-Wechsler, S. P. (1999) Digital Elevation Model (DEM) uncertainty: evaluation and effect on topographic parameters In Proceedings of the 1999 ESRI User Conference (available at: \url{https://proceedings.esri.com/library/userconf/proc99/proceed/papers/pap262/p262.htm})
-
-Wechsler, S. P. (2003). Perceptions of Digital Elevation Model Uncertainty by DEM Users, URISA Journal, 15, 57-64.
-
-Wechsler, S. P., Kroll, C. N. (2006). Quantifying DEM Uncertainty and its Effect on Topographic Parameters. Photogrammetric Engineering & Remote Sensing, 72(9), 1081-1090. \doi{10.14358/pers.72.9.1081}
-
-Wechsler, S. P. (2007). Uncertainties associated with digital elevation models for hydrologic applications: a review. Hydrology and Earth System Sciences, 11, 4, 1481-1500. \doi{10.5194/hess-11-1481-2007}
+Fisher, P., & Tate, N. J. (2006). Causes and consequences of error in digital elevation models. Progress in Physical Geography: Earth and Environment, 30(4), 467-489. https://doi.org/10.1191/0309133306pp492ra
 }
 \author{
 Joseph Lewis

@@ -1,133 +1,189 @@
-#' Create a slope based cost surface
-#'
-#' Creates a cost surface based on the difficulty of moving up/down slope. This function provides the choice of multiple isotropic and anisotropic cost functions that estimate human movement across a landscape. Maximum percentage slope possible for traversal can also be supplied. Lastly, geographical slant exaggeration can be accounted for.
-#'
+#' Creates a slope-based cost surface
+#' 
+#'  Creates a cost surface based on the difficulty of moving up and down slope. This function implements multiple isotropic and anisotropic cost functions that estimate the 'cost' of human movement when traversing a landscape
+#'  
+#' The supplied 'spatRaster' object can have a projected or geographic coordinate system
+#' 
 #' @details
+#' 
+#' The following cost functions have been implemented however users may also supply their own cost function (see Examples):
+#' 
+#' "tobler", "tobler offpath", "davey", 'rees', "irmischer-clarke male", "irmischer-clarke offpath male", "irmischer-clarke female", "irmischer-clarke offpath female", "modified tobler", 'garmy', 'kondo-saino', "wheeled transport", "herzog", "llobera-sluckin", "naismith", "minetti", "campbell","campbell 2019 1","campbell 2019 5" ,"campbell 2019 10","campbell 2019 15","campbell 2019 20","campbell 2019 25","campbell 2019 30","campbell 2019 35","campbell 2019 40","campbell 2019 45","campbell 2019 50","campbell 2019 55","campbell 2019 60","campbell 2019 65","campbell 2019 70","campbell 2019 75","campbell 2019 80","campbell 2019 85","campbell 2019 90","campbell 2019 95","campbell 2019 99", "sullivan 167","sullivan 5", "sullivan 833"
+#' 
+#' Multiple travel rate percentiles implemented for campbell 2019 and sullivan, e.g. "campbell 2019 50" is the 50th percentile
 #'
-#' Tobler's 'Hiking Function' is the most widely used cost function when approximating the difficulty of moving across a landscape (Gorenflo and Gale, 1990; Wheatley and Gillings, 2001). The function assesses the time necessary to traverse a surface and takes into account up-slope and down-slope (Kantner, 2004; Tobler, 1993). Time unit measured in seconds.
+#' @param x \code{SpatRaster} Digital Elevation Model (DEM)
 #'
-#' Tobler's offpath Hiking Function reduces the speed of the Tobler's Hiking Function by 0.6 to take into account walking off-path (Tobler, 1993). Time unit measured in seconds.
+#' @param cost_function \code{character} or \code{function}. Cost function applied to slope values. See details for implemented cost functions. tobler (default)
 #'
-#'The Irmischer and Clark cost functions (2018) were modelled from speed estimates of United States Military Academy (USMA) cadets while they navigated on foot over hilly, wooded terrain as part of their summer training in map and compass navigation. Time unit measured in seconds.
-#'
-#' The Modified Hiking cost function combines MIDE (París Roche, 2002), a method to calculate walking hours for an average hiker with a light load (Márquez-Pérez et al. 2017), and Tobler's 'Hiking Function' (Tobler, 1993). Time unit measured in seconds.
-#'
-#' Herzog (2013), based on the cost function provided by Llobera and Sluckin (2007), has provided a cost function to approximate the cost for wheeled transport. The cost function is symmetric and is most applicable for use when the same route was taken in both directions.
-#'
-#' Herzog's (2010) Sixth-degree polynomial cost function approximates the energy expenditure values (J/(kg*m)) found in Minetti et al. (2002) but eliminates the problem of unrealistic negative energy expenditure values for steep downhill slopes.
-#'
-#' Llobera and Sluckin (2007) cost function approximates the metabolic energy expenditure (KJ/m) when moving across a landscape.
-#'
-#' Campbell (2019) cost function (Lorentz distribution) approximates the time taken to traverse a surface based on crowdsourced GPS data (1.05 million travel rate records). Data divided into travel rate percentiles (1st, 5th to 95th, by 5, and 99th). max_slope argument is fixed at 30 degrees slope to reflect the maximum slope that the cost function is parametised to. Time unit measured in seconds.
-#'
-#' Exaggeration
-#'
-#' When observers face directly toward a hill, their awareness of the slant of the hill is greatly overestimated (Pingel, 2009; Proffitt, 1995; Proffitt, 2001). Pingel (2009) identified that downhill slopes are overestimated at approximately 2.3 times, whilst uphill slopes are overestimated at 2 times.
-#'
-#'
-#' @param dem \code{RasterLayer} (raster package). Digital Elevation Model
-#'
-#' @param cost_function \code{character}. Cost Function used in the Least Cost Path calculation. Implemented cost functions include 'tobler', 'tobler offpath', 'irmischer-clarke male', 'irmischer-clarke offpath male', 'irmischer-clarke female', 'irmischer-clarke offpath female', 'modified tobler', 'wheeled transport', 'herzog', 'llobera-sluckin' and 'campbell 2019'. Default is 'tobler'. See Details for more information
-#'
-#' @param neighbours \code{numeric} value. Number of directions used in the Least Cost Path calculation. See Huber and Church (1985) for methodological considerations when choosing number of neighbours. Expected numeric values are 4, 8, 16, 32, 48 or a matrix object. Default is numeric value 16
+#' @param neighbours \code{numeric} value. Number of directions used in the conductance matrix calculation. Expected numeric values are 4, 8, 16, 32, 48, or matrix object. 16 (default)
 #'
 #' @param crit_slope \code{numeric} value. Critical Slope (in percentage) is 'the transition where switchbacks become more effective than direct uphill or downhill paths'. Cost of climbing the critical slope is twice as high as those for moving on flat terrain and is used for estimating the cost of using wheeled vehicles. Default value is 12, which is the postulated maximum gradient traversable by ancient transport (Verhagen and Jeneson, 2012). Critical slope only used in 'wheeled transport' cost function
 #'
-#' @param max_slope \code{numeric} value. Maximum percentage slope that is traversable. Slope values that are greater than the specified max_slope are given a conductivity value of 0. If cost_function argument is 'campbell 2019' then max_slope is fixed at 30 degrees slope to reflect the maximum slope that the cost function is parametised to. Default is NULL
+#' @param max_slope \code{numeric} value. Maximum percentage slope that is traversable. Slope values that are greater than the specified max_slope are given a conductivity value of 0. If cost_function argument is 'campbell 2019' or 'campbell' then max_slope is fixed at 30 degrees slope to reflect the maximum slope that the cost function is parametised to. NULL (default)
 #'
-#' @param percentile \code{numeric} value. Travel rate percentile only used in 'campbell 2019' cost_function. Expected numeric values are 0.01, 0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 0.99. Default is numeric value 0.50
+#' @param exaggeration \code{logical}. if TRUE, positive slope values (up-hill movement) multiplied by 1.99 and negative slope values (down-hill movement) multiplied by 2.31
 #'
-#' @param exaggeration \code{logical}. if TRUE, positive slope values (ie. up-hill movement) multiplied by 1.99 and negative slope values (ie. down-hill movement) multiplied by 2.31. Based on how observers overestimate the slant of a hill. See Details for more information
+#' @return \code{conductanceMatrix} that numerically expresses the difficulty of moving across slope based on the provided cost function
+#' 
+#' @references 
+#' 
+#' Tobler, W. 1993. Three Presentations on Geographical Analysis and Modeling. Technical Report 93-1 (Santa Barbara, CA)
+#' 
+#' Davey, R.C., M. Hayes and J.M. Norman 1994. “Running Uphill: An Experimental Result and Its Applications,” The Journal of the Operational Research Society 45, 25
+#' 
+#' Rees, W.G. 2004. “Least-cost paths in mountainous terrain,” Computers & Geosciences 30, 203–09
 #'
-#' @return \code{TransitionLayer} (gdistance package) numerically expressing the difficulty of moving up/down slope based on the cost function provided in the cost_function argument.
+#' Irmischer, I.J. and K.C. Clarke 2018. “Measuring and modeling the speed of human navigation,” Cartography and Geographic Information Science 45, 177–86
 #'
+#' Márquez-Pérez, J., I. Vallejo-Villalta and J.I. Álvarez-Francoso 2017. “Estimated travel time for walking trails in natural areas,” Geografisk Tidsskrift-Danish Journal of Geography 117, 53–62
+#'
+#' Garmy, P. et al. 2005. “Logiques spatiales et ‘systèmes de villes’ en Lodévois de l’Antiquité à la période moderne,” Temps et espaces de l’homme en société, analyses et modèles spatiaux en archéologie 335–46
+#'
+#' Kondo, Y. and Y. Seino 2010. “GPS-aided walking experiments and data-driven travel cost modeling on the historical road of Nakasendō-Kisoji (Central Highland Japan),” Making History Interactive (Proceedings of the 37th International Conference, Williamsburg, Virginia, United States of America) 158–65
+#' 
+#' Herzog, I. 2013. “The potential and limits of Optimal Path Analysis,” in Bevan, A. and M. Lake (edd.), Computational approaches to archaeological spaces (Publications of the Institute of Archaeology, University College London) 179–211
+#'
+#' Llobera, M. and T.J. Sluckin 2007. “Zigzagging: Theoretical insights on climbing strategies,” Journal of Theoretical Biology 249, 206–17
+#' 
+#' Naismith, W. 1892. “Excursions: Cruach Ardran, Stobinian, and Ben More,” Scottish Mountaineering club journal 2, 136
+#' 
+#' Minetti, A.E. et al. 2002. “Energy cost of walking and running at extreme uphill and downhill slopes,” Journal of Applied Physiology 93, 1039–46
+#' 
+#' Campbell, M.J., P.E. Dennison and B.W. Butler 2017. “A LiDAR-based analysis of the effects of slope, vegetation density, and ground surface roughness on travel rates for wildland firefighter escape route mapping,” Int. J. Wildland Fire 26, 884
+#' 
+#' Campbell, M.J. et al. 2019. “Using crowdsourced fitness tracker data to model the relationship between slope and travel rates,” Applied Geography 106, 93–107
+#' 
+#' Sullivan, P.R. et al. 2020. “Modeling Wildland Firefighter Travel Rates by Terrain Slope: Results from GPS-Tracking of Type 1 Crew Movement,” Fire 3, 52
+#' 
 #' @author Joseph Lewis
 #'
-#' @import rgdal
-#' @import rgeos
-#' @import sp
-#' @import raster
-#' @import gdistance
-#'
 #' @export
-#'
-#' @examples
-#' r <- raster::raster(system.file('external/maungawhau.grd', package = 'gdistance'))
-#' slope_cs_16 <- create_slope_cs(r, cost_function = 'tobler', neighbours = 16, max_slope = NULL)
-#' slope_cs_48 <- create_slope_cs(r, cost_function = 'tobler', neighbours = 48, max_slope = NULL)
+#' 
+#' @examples 
+#' 
+#' r <- terra::rast(system.file("extdata/SICILY_1000m.tif", package="leastcostpath"))
+#' 
+#' slope_cs <- create_slope_cs(x = r, cost_function = "tobler", neighbours = 4)
+#' slope_cs <- create_slope_cs(x = r, cost_function = "campbell 2019 50", neighbours = 4)
+#' slope_cs2 <- create_slope_cs(x = r, 
+#' cost_function = function(x) {(6 * exp(-3.5 * abs(x + 0.05))) / 3.6}, neighbours = 4)
+#' 
 
-create_slope_cs <- function(dem, cost_function = "tobler", neighbours = 16, crit_slope = 12, max_slope = NULL, percentile = 0.5, exaggeration = FALSE) {
+create_slope_cs <- function(x, cost_function = "tobler", neighbours = 16, crit_slope = 12, max_slope = NULL, exaggeration = FALSE) {
     
-    if (!inherits(dem, "RasterLayer")) {
-        stop("dem argument is invalid. Expecting a RasterLayer object")
+  neighbours <- neighbourhood(neighbours = neighbours)
+    
+  cells <- which(!is.na(terra::values(x)))
+  na_cells <- which(is.na(terra::values(x)))
+    
+  adj <- terra::adjacent(x = x, cells = cells, directions = neighbours, pairs = TRUE)
+  adj <- adj[!adj[,2] %in% na_cells,]
+    
+  elev_values <- terra::values(x)[,1]
+    
+  message("calculating slope...")
+    
+  rise <- (elev_values[adj[,2]] - elev_values[adj[,1]])
+  run <- calculate_distance(x = x, adj = adj)
+    
+  mathematical_slope <- rise/run
+    
+  if(exaggeration) { 
+      mathematical_slope <- ifelse(mathematical_slope > 0, mathematical_slope * 1.99, mathematical_slope * 2.31)
+  }
+    
+  ncells <- length(cells) + length(na_cells)
+    
+  cf <- cost(cost_function = cost_function, crit_slope = crit_slope)
+    
+  if(is.function(cost_function)) { 
+    message(c("Applying ", deparse(body(cost_function)[[2]]), " cost function"))
+  } else{ 
+    message(c("Applying ", cost_function, " cost function"))
+  }
+    
+  speed <- cf(mathematical_slope)
+    
+  conductance <- speed/run
+  
+  if(!is.function(cost_function)) {
+    if(cost_function %in% c("campbell","campbell 2019 1","campbell 2019 5" ,"campbell 2019 10","campbell 2019 15","campbell 2019 20","campbell 2019 25","campbell 2019 30","campbell 2019 35","campbell 2019 40","campbell 2019 45","campbell 2019 50","campbell 2019 55","campbell 2019 60","campbell 2019 65","campbell 2019 70","campbell 2019 75","campbell 2019 80","campbell 2019 85","campbell 2019 90","campbell 2019 95","campbell 2019 99")) { 
+      # convert 30 degrees slope to percentage slope
+      max_slope <- tan(30*pi/180)*100
+    }
     }
     
-    if (any(!neighbours %in% c(4, 8, 16, 32, 48)) & (!inherits(neighbours, "matrix"))) {
-        stop("neighbours argument is invalid. Expecting 4, 8, 16, 32, 48, or matrix object")
-    }
+  if(!is.null(max_slope)) {
+      # convert percentage max slope to mathematical max slope
+      max_slope <- max_slope/100
+      index <- abs(mathematical_slope) >= max_slope
+      conductance[index] <- 0
+  }
     
-    if (inherits(neighbours, "numeric")) {
-        if (neighbours == 32) {
-            neighbours <- neighbours_32
-            
-        } else if (neighbours == 48) {
-            neighbours <- neighbours_48
-        }
-        
-    }
+  cs_matrix <- Matrix::Matrix(data = 0, nrow = ncells, ncol = ncells, sparse = TRUE)
+  cs_matrix[adj] <- conductance
     
-    slope <- calculate_slope(dem = dem, neighbours = neighbours, exaggeration = exaggeration)
+  cs <- list("conductanceMatrix" = cs_matrix, 
+             "costFunction" = cost_function,
+             "maxSlope" = ifelse(!is.null(max_slope), paste0(max_slope*100, "%"), NA), 
+             "exaggeration" = exaggeration,
+             "criticalSlope" = ifelse(test = !is.function(cost_function), yes = ifelse(test = cost_function == "wheeled transport", yes = paste0(max_slope, "%"), no = NA), no = NA),
+             "neighbours" = sum(neighbours, na.rm = TRUE),
+             "resolution" = terra::res(x), 
+             "nrow" = terra::nrow(x), 
+             "ncol" = terra::ncol(x), 
+             "extent" = as.vector(terra::ext(x)), 
+             "crs" = terra::crs(x, proj = TRUE))
     
-    adj <- raster::adjacent(dem, cells = 1:raster::ncell(dem), pairs = TRUE, directions = neighbours)
+  class(cs) <- "conductanceMatrix"
     
-    cf <- cost(cost_function = cost_function, adj = adj, crit_slope = crit_slope, percentile = percentile)
+  return(cs)
     
-    cost <- slope
+}
+
+#' @noRd
+#' @export
+
+print.conductanceMatrix <- function(x, ...) {
+    cat("Class: ", class(x))
+    if(!is.function(x$costFunction)) { cat("\ncost function: ", x$costFunction)}
+    if(is.function(x$costFunction)) { cat("\ncost function: ", deparse(body(x$costFunction)[[2]]))}
+    cat("\nneighbours:", x$neighbours)
+    cat("\nresolution:", x$resolution, "(x, y)")
+    cat("\nmax slope:", x$maxSlope)
+    cat("\nexaggeration:", x$exaggeration)
+    cat("\ncritical slope:", x$criticalSlope)
+    cat("\nSpatRaster dimenions: ", x$nrow, x$ncol, prod(x$nrow, x$ncol),  "(nrow, ncol, ncell)")
+    cat("\nMatrix dimensions: ", x$conductanceMatrix@Dim,  "(nrow, ncol)")
+    cat("\ncrs:", x$crs)
+    cat("\nextent:", x$extent, "(xmin, xmax, ymin, ymax)")
+}
+
+#' plot conductanceMatrix
+#' 
+#' plot conductanceMatrix for visualisation. Conductivity values are the mean conductivity for each cell
+#' 
+#' @param x \code{conductanceMatrix} 
+#' @param ... arguments passed to \code{terra::plot}
+#' @export
+
+plot.conductanceMatrix <- function(x, ...) {
     
-    cost[adj] <- cf(slope)
+  cs_rast <- terra::rast(nrow = x$nrow, ncol = x$ncol, xmin = x$extent[1], xmax = x$extent[2], ymin = x$extent[3], ymax = x$extent[4],crs = x$crs)
     
-    speed_cfs <- c("tobler", "tobler offpath", "irmischer-clarke male", "irmischer-clarke offpath male", "irmischer-clarke female", "irmischer-clarke offpath female", 
-        "modified tobler", "campbell 2019")
+    col_sum <- Matrix::colSums(x$conductanceMatrix)
+    row_sum <- Matrix::rowSums(x$conductanceMatrix)
     
-    if (cost_function %in% speed_cfs) {
-        
-        cost[adj] <- cost[adj] * 0.278
-        
-        Conductance <- gdistance::geoCorrection(cost, scl = FALSE)
-        
-    } else {
-        
-        Conductance <- gdistance::geoCorrection(cost, scl = FALSE)
-        
-    }
+    logical_sm <- methods::as(x$conductance, "lMatrix")
     
-    if (cost_function == "campbell 2019") {
-        
-        if (is.null(max_slope)) {
-            message("max_slope argument set to 30 degrees slope to reflect the maximum slope that the cost function is parametised to")
-            max_slope <- 30
-        } else if (max_slope > 30) {
-            message("max_slope argument cannot be above 30 degree slope. max_slope argument set to 30 degrees slope to reflect the maximum slope that the cost function is parametised to")
-            max_slope <- 30
-        } else {
-            max_slope <- max_slope
-        }
-    }
+    ncols <- Matrix::colSums(logical_sm)
+    nrows <- Matrix::rowSums(logical_sm)
     
-    if (inherits(max_slope, "numeric")) {
-        
-        if (max_slope < 0) {
-            stop("max_slope argument is invalid. Expecting numeric value above 0")
-        }
-        
-        max_slope <- max_slope/100
-        
-        index <- abs(slope[adj]) >= max_slope
-        
-        Conductance[adj][index] <- 0
-        
-    }
+    vals <- ((col_sum / ncols) + (row_sum / nrows)) / 2
     
-    return(Conductance)
+    cs_rast <- terra::setValues(cs_rast, vals)
+    
+    terra::plot(cs_rast, ...)
     
 }

@@ -2,48 +2,54 @@
 % Please edit documentation in R/PDI_validation.R
 \name{PDI_validation}
 \alias{PDI_validation}
-\title{Calculate Path Deviation Index}
+\title{Calculate the similarity of a least-cost path to a known route}
 \usage{
 PDI_validation(lcp, comparison)
 }
 \arguments{
-\item{lcp}{\code{SpatialLines*} (sp package). Least Cost Path to assess the accuracy of. Expects object of class SpatialLines. Only first feature used.}
+\item{lcp}{\code{sf}}
 
-\item{comparison}{\code{SpatialLines*} to validate the Least Cost Path against. Expects object of class SpatialLines. Only first feature used.}
+\item{comparison}{\code{sf}}
 }
 \value{
-\code{SpatialPolygonsDataFrame} or \code{SpatialLinesDataFrame} (sp package). SpatialPolygonsDataFrame of Area between the LCP and comparison SpatialLines if LCP and comparison SpatialLines are not identical, else returns SpatialLinesDataFrame. Data frame containing Area, PDI, distance of the Euclidean shortest path between the origin and destination and normalised PDI.
+\code{sf} POLYGON of the area between the lcp and comparison with data.frame of area, pdi, max distance, and normalised pdi
 }
 \description{
-Calculates the Path Deviation Index of a Least Cost Path and a comparison SpatialLines using the method proposed by Jan et al. (1999).
+Calculates the similarity of a least-cost path to a known route using the path deviation index method proposed by Jan et al. (1999)
 }
 \details{
-The Path Deviation Index measures the deviation (i.e. the spatial separation) between a pair of paths and aims to overcome the shortcomings of measuring the percentage of coverage of a least cost path from a comparison path (for example, the validation_lcp function).
+The Path Deviation Index (pdi) measures the spatial separation between a pair of paths and aims to overcome the shortcomings of measuring the percentage of coverage of a least cost path from a comparison path (e.g. as implemented in the buffer_validation function).
 
-The index is defined as the area between paths divided by the distance of the shortest path (i.e. Euclidean) between an origin and destination. The index can be interpreted as the average distance between the paths.
+The pdi index is defined as the area between paths divided by the Euclidean distance of the shortest path between the origin and destination of the paths. The index can be interpreted as the average distance between the paths.
 
-\code{Path Deviation Index  = Area between paths / length of shortest path}
+\code{pdi  = area / length}
 
-The value of the Path Deviation Index depends on the length of the path and makes comparison of PDIs difficult for paths with different origins and destinations. This can be overcome by normalising the Path Deviation Index by the distance of the shortest path (i.e. Euclidean) between an origin and destination.
+The value of the pdi depends on the length of the path and makes comparison of pdis difficult for paths with different origins and destinations. This is overcome by normalising the pdi by the Euclidean distance of the shortest path between the origin and destination of the paths
 
-\code{Normalised PDI = PDI / length of shortest path x 100}
+\code{Normalised pdi = pdi / length * 100}
 
-The normalised Path Deviation Index is the percent of deviation between the two paths over the shortest path. For example, if a normalised PDI is 30 percent, it means that the average distance between two paths is 30 percent of the length of the shortest path. With normalised PDI, all path deviation can be compared regardless of the length of the shortest path.
+The normalised pdi is the percent of spatial separation between the two paths over the shortest path. For example, if a normalised pdi is 30 percent, it means that the average distance between two paths is 30 percent of the length of the shortest path. With normalised pdi, the spatial separations of all paths  can be compared regardless of the length of the shortest path.
 
-Note: Direction of lcp and comparison SpatialLines must be in the same order. Check First point (Origin) and Last point (Destination) for confirmation.
+Note: If the lcp path has a different origin and destination than the comparison path, the origin and destination of the lcp path are replaced with the origin and destination of the comparison path. This to ensure that a polygon can be created between the two paths which is required for calculating the area of spatial separation.
 }
 \examples{
-x1 <- c(1,5,4,50)
-y1 <- c(1,3,4,50)
-line1 <- sp::SpatialLines(list(sp::Lines(sp::Line(cbind(x1,y1)), ID='a')))
-x2 <- c(1,5,5,50)
-y2 <- c(1,4,6,50)
-line2 <- sp::SpatialLines(list(sp::Lines(sp::Line(cbind(x2,y2)), ID='b')))
 
-val_lcp <- PDI_validation(lcp = line1, line2)
-}
-\references{
-Jan, O., Horowitz, A.J., Peng, Z.R. (2000). Using Global Positioning System Data to Understand Variations in Path Choice. Transportation Research Record, 1725, 37-44
+r <- terra::rast(system.file("extdata/SICILY_1000m.tif", package="leastcostpath"))
+
+slope_cs <- create_slope_cs(x = r, cost_function = "tobler", neighbours = 4)
+
+locs <- sf::st_sf(geometry = sf::st_sfc(
+sf::st_point(c(839769, 4199443)),
+sf::st_point(c(1038608, 4100024)),
+crs = terra::crs(r)))
+
+lcp1 <- create_lcp(x = slope_cs, origin = locs[1,], destination = locs[2,], 
+cost_distance = TRUE)
+
+lcp2 <- create_lcp(x = slope_cs, origin = locs[2,], destination = locs[1,], 
+cost_distance = TRUE)
+
+pdi_val <- PDI_validation(lcp = lcp1, comparison = lcp2)
 }
 \author{
 Joseph Lewis

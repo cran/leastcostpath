@@ -2,44 +2,32 @@
 % Please edit documentation in R/crop_cs.R
 \name{crop_cs}
 \alias{crop_cs}
-\title{Crop Cost Surface}
+\title{Crop conductanceMatrix to extent}
 \usage{
-crop_cs(cost_surface, boundary)
+crop_cs(x, extent)
 }
 \arguments{
-\item{cost_surface}{\code{TransitionLayer} (gdistance package). Cost surface to crop}
+\item{x}{\code{spatRaster}}
 
-\item{boundary}{\code{Spatial*} (sp package) or \code{RasterLayer} (raster package). Boundary used when cropping Cost Surface. See details for more}
-}
-\value{
-\code{TransitionLayer} (gdistance package). Cropped Cost Surface
+\item{extent}{\code{sf object or terra SpatRaster}. Extent obtained from object using terra::ext}
 }
 \description{
-Crops Cost Surfaces to the supplied SpatialPolygon* boundary
+Crop conductanceMatrix to extent
 }
 \details{
-The resultant Cost Surface is cropped to the Spatial* or RasterLayer object. All areas of the Cost Surface that are outside the supplied boundary are given a conductance value of 0. The conductance value of 0 ensures that movement is inhibited within these areas. If a RasterLayer object is supplied in the boundary argument then all cells with a value of \code{NA} will be given a Conductance value of 0.
+conductanceMatrix cropped to extent of supplied \code{Sf object} or \code{terra SpatRaster}. conductanceMatrix spatRaster dimensions and Matrix dimensions update to reflect cropped extent
 }
 \examples{
-r <- raster::raster(system.file('external/maungawhau.grd', package = 'gdistance'))
 
-pt = cbind(2667670, 6479000)
-pt = sp::SpatialPoints(pt)
-polygon <- rgeos::gBuffer(spgeom = pt, width = 200)
-raster::crs(pt) <- raster::crs(r)
-raster::crs(polygon) <- raster::crs(r)
+r <- terra::rast(system.file("extdata/SICILY_1000m.tif", package="leastcostpath"))
 
-slope_cs <- create_slope_cs(r, cost_function = 'tobler', neighbours = 16, max_slope = NULL)
+slope_cs <- create_slope_cs(x = r, cost_function = "tobler", neighbours = 4)
 
-slope_cs_pt <- crop_cs(cost_surface = slope_cs, boundary = pt)
-slope_cs_polygon <- crop_cs(cost_surface = slope_cs, boundary = polygon)
+ext <- sf::st_as_sfc(sf::st_bbox(rasterise(slope_cs)))
+ext <- sf::st_buffer(ext, dist = -75000)
+ext <- sf::st_as_sf(ext)
 
-r2 <- r
-ext <- raster::extent(2667500, 2667900, 6478800, 6479500)
-cells <- unlist(raster::cellFromPolygon(object = r, p = as(ext, 'SpatialPolygons')))
-r2[-cells] <- NA
-
-slope_cs_raster <- crop_cs(cost_surface = slope_cs, boundary = r2)
+slope_cs_cropped <- crop_cs(slope_cs, extent = ext)
 }
 \author{
 Joseph Lewis

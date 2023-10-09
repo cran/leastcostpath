@@ -2,36 +2,37 @@
 % Please edit documentation in R/create_cost_corridor.R
 \name{create_cost_corridor}
 \alias{create_cost_corridor}
-\title{Create a Cost Corridor}
+\title{creates a cost corridor}
 \usage{
-create_cost_corridor(cost_surface, origin, destination, rescale = FALSE)
+create_cost_corridor(x, origin, destination, rescale = FALSE)
 }
 \arguments{
-\item{cost_surface}{\code{TransitionLayer} (gdistance package). Cost surface to be used in Cost Corridor calculation}
+\item{x}{\code{SpatRaster}}
 
-\item{origin}{\code{SpatialPoints*} (sp package). orgin location from which the Accumulated Cost is calculated. Only the first cell is taken into account.}
+\item{origin}{\code{sf} 'POINT' or 'MULTIPOINT', \code{SpatVector}, \code{data.frame} or \code{matrix} containing the origin coordinates. Only the first row of the supplied object is used as the origin.}
 
-\item{destination}{\code{SpatialPoints*} (sp package). destination location from which the Accumulated Cost is calculated. Only the first cell is taken into account}
+\item{destination}{\code{sf} 'POINT' or 'MULTIPOINT', \code{SpatVector}, \code{data.frame} or \code{matrix} containing the destination coordinates.  Only the first row of the supplied object is used as the destination.}
 
-\item{rescale}{\code{logical}. if TRUE raster values scaled to between 0 and 1. Default is FALSE}
+\item{rescale}{\code{logical}. if TRUE, values scaled to between 0 and 1. FALSE (default)}
 }
 \value{
-\code{RasterLayer} (raster package). The resultant object is the accumulated cost surface from origin-to-destination and destination-to-origin and can be used to identify areas of preferential movement in the landscape.
+\code{SpatRaster}
 }
 \description{
-Combines the accumulated cost surfaces from origin-to-destination and destination-to-origin to identify areas of preferential movement that takes into account both directions of movement.
+Combines and averages the accumulated cost surfaces from origin-to-destination and destination-to-origin to identify areas of preferential movement that takes into account both directions of movement
 }
 \examples{
-r <- raster::raster(system.file('external/maungawhau.grd', package = 'gdistance'))
-slope_cs <- create_slope_cs(r, cost_function = 'tobler', neighbours = 16)
 
-loc1 = cbind(2667670, 6479000)
-loc1 = sp::SpatialPoints(loc1)
+r <- terra::rast(system.file("extdata/SICILY_1000m.tif", package="leastcostpath"))
 
-loc2 = cbind(2667800, 6479400)
-loc2 = sp::SpatialPoints(loc2)
+slope_cs <- create_slope_cs(x = r, cost_function = "tobler", neighbours = 4)
 
-cost_corridor <- create_cost_corridor(slope_cs, loc1, loc2, rescale = FALSE)
+locs <- sf::st_sf(geometry = sf::st_sfc(
+sf::st_point(c(839769, 4199443)),
+sf::st_point(c(1038608, 4100024)),
+crs = terra::crs(r)))
+
+cc <- create_cost_corridor(x = slope_cs, origin = locs[1,], destination = locs[2,], rescale = TRUE)
 }
 \author{
 Joseph Lewis

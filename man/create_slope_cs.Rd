@@ -2,64 +2,83 @@
 % Please edit documentation in R/create_slope_cs.R
 \name{create_slope_cs}
 \alias{create_slope_cs}
-\title{Create a slope based cost surface}
+\title{Creates a slope-based cost surface}
 \usage{
 create_slope_cs(
-  dem,
+  x,
   cost_function = "tobler",
   neighbours = 16,
   crit_slope = 12,
   max_slope = NULL,
-  percentile = 0.5,
   exaggeration = FALSE
 )
 }
 \arguments{
-\item{dem}{\code{RasterLayer} (raster package). Digital Elevation Model}
+\item{x}{\code{SpatRaster} Digital Elevation Model (DEM)}
 
-\item{cost_function}{\code{character}. Cost Function used in the Least Cost Path calculation. Implemented cost functions include 'tobler', 'tobler offpath', 'irmischer-clarke male', 'irmischer-clarke offpath male', 'irmischer-clarke female', 'irmischer-clarke offpath female', 'modified tobler', 'wheeled transport', 'herzog', 'llobera-sluckin' and 'campbell 2019'. Default is 'tobler'. See Details for more information}
+\item{cost_function}{\code{character} or \code{function}. Cost function applied to slope values. See details for implemented cost functions. tobler (default)}
 
-\item{neighbours}{\code{numeric} value. Number of directions used in the Least Cost Path calculation. See Huber and Church (1985) for methodological considerations when choosing number of neighbours. Expected numeric values are 4, 8, 16, 32, 48 or a matrix object. Default is numeric value 16}
+\item{neighbours}{\code{numeric} value. Number of directions used in the conductance matrix calculation. Expected numeric values are 4, 8, 16, 32, 48, or matrix object. 16 (default)}
 
 \item{crit_slope}{\code{numeric} value. Critical Slope (in percentage) is 'the transition where switchbacks become more effective than direct uphill or downhill paths'. Cost of climbing the critical slope is twice as high as those for moving on flat terrain and is used for estimating the cost of using wheeled vehicles. Default value is 12, which is the postulated maximum gradient traversable by ancient transport (Verhagen and Jeneson, 2012). Critical slope only used in 'wheeled transport' cost function}
 
-\item{max_slope}{\code{numeric} value. Maximum percentage slope that is traversable. Slope values that are greater than the specified max_slope are given a conductivity value of 0. If cost_function argument is 'campbell 2019' then max_slope is fixed at 30 degrees slope to reflect the maximum slope that the cost function is parametised to. Default is NULL}
+\item{max_slope}{\code{numeric} value. Maximum percentage slope that is traversable. Slope values that are greater than the specified max_slope are given a conductivity value of 0. If cost_function argument is 'campbell 2019' or 'campbell' then max_slope is fixed at 30 degrees slope to reflect the maximum slope that the cost function is parametised to. NULL (default)}
 
-\item{percentile}{\code{numeric} value. Travel rate percentile only used in 'campbell 2019' cost_function. Expected numeric values are 0.01, 0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 0.99. Default is numeric value 0.50}
-
-\item{exaggeration}{\code{logical}. if TRUE, positive slope values (ie. up-hill movement) multiplied by 1.99 and negative slope values (ie. down-hill movement) multiplied by 2.31. Based on how observers overestimate the slant of a hill. See Details for more information}
+\item{exaggeration}{\code{logical}. if TRUE, positive slope values (up-hill movement) multiplied by 1.99 and negative slope values (down-hill movement) multiplied by 2.31}
 }
 \value{
-\code{TransitionLayer} (gdistance package) numerically expressing the difficulty of moving up/down slope based on the cost function provided in the cost_function argument.
+\code{conductanceMatrix} that numerically expresses the difficulty of moving across slope based on the provided cost function
 }
 \description{
-Creates a cost surface based on the difficulty of moving up/down slope. This function provides the choice of multiple isotropic and anisotropic cost functions that estimate human movement across a landscape. Maximum percentage slope possible for traversal can also be supplied. Lastly, geographical slant exaggeration can be accounted for.
+Creates a cost surface based on the difficulty of moving up and down slope. This function implements multiple isotropic and anisotropic cost functions that estimate the 'cost' of human movement when traversing a landscape
+ 
+The supplied 'spatRaster' object can have a projected or geographic coordinate system
 }
 \details{
-Tobler's 'Hiking Function' is the most widely used cost function when approximating the difficulty of moving across a landscape (Gorenflo and Gale, 1990; Wheatley and Gillings, 2001). The function assesses the time necessary to traverse a surface and takes into account up-slope and down-slope (Kantner, 2004; Tobler, 1993). Time unit measured in seconds.
+The following cost functions have been implemented however users may also supply their own cost function (see Examples):
 
-Tobler's offpath Hiking Function reduces the speed of the Tobler's Hiking Function by 0.6 to take into account walking off-path (Tobler, 1993). Time unit measured in seconds.
+"tobler", "tobler offpath", "davey", 'rees', "irmischer-clarke male", "irmischer-clarke offpath male", "irmischer-clarke female", "irmischer-clarke offpath female", "modified tobler", 'garmy', 'kondo-saino', "wheeled transport", "herzog", "llobera-sluckin", "naismith", "minetti", "campbell","campbell 2019 1","campbell 2019 5" ,"campbell 2019 10","campbell 2019 15","campbell 2019 20","campbell 2019 25","campbell 2019 30","campbell 2019 35","campbell 2019 40","campbell 2019 45","campbell 2019 50","campbell 2019 55","campbell 2019 60","campbell 2019 65","campbell 2019 70","campbell 2019 75","campbell 2019 80","campbell 2019 85","campbell 2019 90","campbell 2019 95","campbell 2019 99", "sullivan 167","sullivan 5", "sullivan 833"
 
-The Irmischer and Clark cost functions (2018) were modelled from speed estimates of United States Military Academy (USMA) cadets while they navigated on foot over hilly, wooded terrain as part of their summer training in map and compass navigation. Time unit measured in seconds.
-
-The Modified Hiking cost function combines MIDE (París Roche, 2002), a method to calculate walking hours for an average hiker with a light load (Márquez-Pérez et al. 2017), and Tobler's 'Hiking Function' (Tobler, 1993). Time unit measured in seconds.
-
-Herzog (2013), based on the cost function provided by Llobera and Sluckin (2007), has provided a cost function to approximate the cost for wheeled transport. The cost function is symmetric and is most applicable for use when the same route was taken in both directions.
-
-Herzog's (2010) Sixth-degree polynomial cost function approximates the energy expenditure values (J/(kg*m)) found in Minetti et al. (2002) but eliminates the problem of unrealistic negative energy expenditure values for steep downhill slopes.
-
-Llobera and Sluckin (2007) cost function approximates the metabolic energy expenditure (KJ/m) when moving across a landscape.
-
-Campbell (2019) cost function (Lorentz distribution) approximates the time taken to traverse a surface based on crowdsourced GPS data (1.05 million travel rate records). Data divided into travel rate percentiles (1st, 5th to 95th, by 5, and 99th). max_slope argument is fixed at 30 degrees slope to reflect the maximum slope that the cost function is parametised to. Time unit measured in seconds.
-
-Exaggeration
-
-When observers face directly toward a hill, their awareness of the slant of the hill is greatly overestimated (Pingel, 2009; Proffitt, 1995; Proffitt, 2001). Pingel (2009) identified that downhill slopes are overestimated at approximately 2.3 times, whilst uphill slopes are overestimated at 2 times.
+Multiple travel rate percentiles implemented for campbell 2019 and sullivan, e.g. "campbell 2019 50" is the 50th percentile
 }
 \examples{
-r <- raster::raster(system.file('external/maungawhau.grd', package = 'gdistance'))
-slope_cs_16 <- create_slope_cs(r, cost_function = 'tobler', neighbours = 16, max_slope = NULL)
-slope_cs_48 <- create_slope_cs(r, cost_function = 'tobler', neighbours = 48, max_slope = NULL)
+
+r <- terra::rast(system.file("extdata/SICILY_1000m.tif", package="leastcostpath"))
+
+slope_cs <- create_slope_cs(x = r, cost_function = "tobler", neighbours = 4)
+slope_cs <- create_slope_cs(x = r, cost_function = "campbell 2019 50", neighbours = 4)
+slope_cs2 <- create_slope_cs(x = r, 
+cost_function = function(x) {(6 * exp(-3.5 * abs(x + 0.05))) / 3.6}, neighbours = 4)
+
+}
+\references{
+Tobler, W. 1993. Three Presentations on Geographical Analysis and Modeling. Technical Report 93-1 (Santa Barbara, CA)
+
+Davey, R.C., M. Hayes and J.M. Norman 1994. “Running Uphill: An Experimental Result and Its Applications,” The Journal of the Operational Research Society 45, 25
+
+Rees, W.G. 2004. “Least-cost paths in mountainous terrain,” Computers & Geosciences 30, 203–09
+
+Irmischer, I.J. and K.C. Clarke 2018. “Measuring and modeling the speed of human navigation,” Cartography and Geographic Information Science 45, 177–86
+
+Márquez-Pérez, J., I. Vallejo-Villalta and J.I. Álvarez-Francoso 2017. “Estimated travel time for walking trails in natural areas,” Geografisk Tidsskrift-Danish Journal of Geography 117, 53–62
+
+Garmy, P. et al. 2005. “Logiques spatiales et ‘systèmes de villes’ en Lodévois de l’Antiquité à la période moderne,” Temps et espaces de l’homme en société, analyses et modèles spatiaux en archéologie 335–46
+
+Kondo, Y. and Y. Seino 2010. “GPS-aided walking experiments and data-driven travel cost modeling on the historical road of Nakasendō-Kisoji (Central Highland Japan),” Making History Interactive (Proceedings of the 37th International Conference, Williamsburg, Virginia, United States of America) 158–65
+
+Herzog, I. 2013. “The potential and limits of Optimal Path Analysis,” in Bevan, A. and M. Lake (edd.), Computational approaches to archaeological spaces (Publications of the Institute of Archaeology, University College London) 179–211
+
+Llobera, M. and T.J. Sluckin 2007. “Zigzagging: Theoretical insights on climbing strategies,” Journal of Theoretical Biology 249, 206–17
+
+Naismith, W. 1892. “Excursions: Cruach Ardran, Stobinian, and Ben More,” Scottish Mountaineering club journal 2, 136
+
+Minetti, A.E. et al. 2002. “Energy cost of walking and running at extreme uphill and downhill slopes,” Journal of Applied Physiology 93, 1039–46
+
+Campbell, M.J., P.E. Dennison and B.W. Butler 2017. “A LiDAR-based analysis of the effects of slope, vegetation density, and ground surface roughness on travel rates for wildland firefighter escape route mapping,” Int. J. Wildland Fire 26, 884
+
+Campbell, M.J. et al. 2019. “Using crowdsourced fitness tracker data to model the relationship between slope and travel rates,” Applied Geography 106, 93–107
+
+Sullivan, P.R. et al. 2020. “Modeling Wildland Firefighter Travel Rates by Terrain Slope: Results from GPS-Tracking of Type 1 Crew Movement,” Fire 3, 52
 }
 \author{
 Joseph Lewis

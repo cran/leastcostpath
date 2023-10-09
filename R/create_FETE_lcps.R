@@ -1,124 +1,90 @@
-#' Calculate least cost paths from each location to all other locations.
-#'
-#' Calculates least cost paths from each location to all other locations (i.e. From Everywhere To Everywhere (FETE)). This is based on the method proposed by White and Barber (2012).
-#'
-#' @param cost_surface \code{TransitionLayer} (gdistance package). Cost surface to be used in Least Cost Path calculation
-#'
-#' @param locations \code{SpatialPoints*} (sp package). Locations to calculate Least Cost Paths from and to
-#'
-#' @param cost_distance \code{logical}. if TRUE computes total accumulated cost for each Least Cost Path. Default is FALSE
-#'
-#' @param parallel \code{logical}. if TRUE, the Least Cost Paths will be calculated in parallel. Default is FALSE
-#'
-#' @param ncores \code{numeric}. Number of cores used if parallel is TRUE. Default value is 1.
-#'
-#'@references White, DA. Barber, SB. (2012). Geospatial modeling of pedestrian transportation networks: a case study from precolumbian Oaxaca, Mexico. J Archaeol Sci 39:2684-2696. \doi{10.1016/j.jas.2012.04.017}
-#'
-#' @return \code{SpatialLinesDataFrame} (sp package). The resultant object contains least cost paths calculated from each location to all other locations
-#'
+#' Calculate Least-cost Paths from each location to all other locations 
+#' 
+#' Calculates Least-cost paths from-everywhere-to-everywhere. This is based on the approach proposed by White and Barber (2012).
+#' 
+#' @param x \code{conductanceMatrix} 
+#' 
+#' @param locations \code{sf} 'POINT' or 'MULTIPOINT', \code{SpatVector}, \code{data.frame} or \code{matrix} containing the locations coordinates
+#' 
+#' @param cost_distance \code{logical} if TRUE computes total accumulated cost from origin to destination. FALSE (default)
+#' 
+#' @param ncores \code{numeric} Number of cores used when calculating least-cost paths from-everywhere-to-everywhere. 1 (default)
+#' 
 #' @author Joseph Lewis
-#'
-#' @import rgdal
-#' @import rgeos
-#' @import sp
-#' @import raster
-#' @import gdistance
-#' @import parallel
-#' @import pbapply
-#'
+#' 
+#' @return \code{sf} or \code{spatVector} Least-cost paths from-everywhere-to-everywhere based on the supplied \code{conductanceMatrix}. If supplied \code{locations} is a \code{spatVector} object then \code{spatVector} object returned else \code{sf} object 
+#' 
+#' @importFrom foreach %dopar%
+#' 
 #' @export
-#'
-#'@examples
-#'
-#'r <- raster::raster(nrow=50, ncol=50,  xmn=0, xmx=50, ymn=0, ymx=50,
-#'crs='+proj=utm')
-#'
-#'r[] <- stats::runif(1:length(r))
-#'
-#'slope_cs <- create_slope_cs(r, cost_function = 'tobler')
-#'
-#'locs <- sp::spsample(as(raster::extent(r), 'SpatialPolygons'),n=5,'regular')
-#'
-#'lcp_network <- create_FETE_lcps(cost_surface = slope_cs, locations = locs,
-#'cost_distance = FALSE, parallel = FALSE)
+#' 
+#' @examples 
+#' 
+#' r <- terra::rast(system.file("extdata/SICILY_1000m.tif", package="leastcostpath"))
+#' 
+#' slope_cs <- create_slope_cs(x = r, cost_function = "tobler", neighbours = 4)
+#' 
+#' locs <- sf::st_sf(geometry = sf::st_sfc(
+#' sf::st_point(c(839769, 4199443)),
+#' sf::st_point(c(1038608, 4100024)),
+#' sf::st_point(c(907695, 4145478)),
+#' sf::st_point(c(907695, 4145478)),
+#' crs = terra::crs(r)))
+#' 
+#' lcps <- create_FETE_lcps(x = slope_cs, locations = locs)
 
-create_FETE_lcps <- function(cost_surface, locations, cost_distance = FALSE, parallel = FALSE, ncores = 1) {
+create_FETE_lcps <- function(x, locations, cost_distance = FALSE, ncores = 1) {
+  
+  check_locations(x, locations)
+  
+  loc_vect <- inherits(locations, "SpatVector")
+  
+  myCluster <- parallel::makeCluster(ncores)
+  doParallel::registerDoParallel(myCluster)
+  
+  nlocs <- nrow(locations)
+  
+  if(loc_vect) { 
+    locations <- sf::st_as_sf(locations)
+  }
+  
+  lcp_network <- foreach::foreach(i = 1:nlocs, .errorhandling = "remove", .combine = "rbind", .packages = c("sf", "terra")) %dopar% {
     
-    if (!inherits(cost_surface, "TransitionLayer")) {
-        stop("cost_surface argument is invalid. Expecting a TransitionLayer object")
-    }
+    lcp <- create_lcp(x = x,
+                      origin = locations[i,, drop = FALSE],
+                      destination = locations[-i,, drop = FALSE],
+                      cost_distance = cost_distance)
     
-    if (!inherits(locations, c("SpatialPoints", "SpatialPointsDataFrame"))) {
-        stop("Locations argument is invalid. Expecting SpatialPoints* object")
-    }
+    lcp$origin_ID <- i
+    lcp$destination_ID <- (1:nlocs)[-i]
     
-    if (length(locations) < 2) 
-        stop("Number of locations invalid. Expecting more than one location")
-    
-    if (!inherits(ncores, "numeric")) {
-        stop("ncores argument is invalid. Expecting a numeric vector object")
-    }
-    
-    network <- (expand.grid(seq_along(locations), seq_along(locations)))
-    
-    network <- network[network[, 1] != network[, 2], ]
-    
-    if (parallel) {
-        
-        no_cores <- ncores
-        
-        cl <- parallel::makeCluster(no_cores)
-        
-        parallel::clusterExport(cl, varlist = c("cost_surface", "locations"), envir = environment())
-        
-        lcp_network <- pbapply::pbapply(network, MARGIN = 1, function(x) {
-            gdistance::shortestPath(cost_surface, locations[x[1], ], locations[x[2], ], output = "SpatialLines")
-        }, cl = cl)
-        
-        parallel::stopCluster(cl)
-        
-    } else {
-        
-        lcp_network <- pbapply::pbapply(network, MARGIN = 1, function(x) {
-            gdistance::shortestPath(cost_surface, locations[x[1], ], locations[x[2], ], output = "SpatialLines")
-        })
-        
-    }
-    
-    lcps_issue <- which(sapply(1:nrow(network), FUN = function(x) {
-        nrow(lcp_network[[x]]@lines[[1]]@Lines[[1]]@coords)
-    }) == 1)
-    
-    check_pts <- unique(network[lcps_issue, 1][duplicated(network[lcps_issue, 1])])
-    
-    if (length(lcps_issue) != 0) {
-        warning(length(lcps_issue), " lcps could not be calculated. Please check the supplied location points to ensure they are not in areas in which movement is prohibited.")
-    }
-    
-    lcp_network <- do.call(rbind, lcp_network)
-    
-    if (length(lcps_issue) != 0) {
-        
-        lcp_network <- lcp_network[-lcps_issue, ]
-        
-        network <- network[-lcps_issue, ]
-        
-    }
-    
-    lcp_network <- SpatialLinesDataFrame(lcp_network, data.frame(from = network[, 1], to = network[, 2]), match.ID = FALSE)
-    
-    if (cost_distance) {
-        
-        cost_dist <- apply(network, MARGIN = 1, function(x) {
-            gdistance::costDistance(cost_surface, locations[x[1], ], locations[x[2], ])
-        })
-        
-        lcp_network$cost <- cost_dist
-        
-        lcp_network <- lcp_network[order(lcp_network$cost), ]
-        
-    }
-    
-    return(lcp_network)
-    
+    return(lcp)
+  }
+  
+  parallel::stopCluster(myCluster)
+  
+  lcp_network <- lcp_network[!is.na(sf::st_is_valid(lcp_network)),]
+  
+  empty_lcps <- sf::st_is_empty(lcp_network)
+  
+  lcp_network <- lcp_network[!empty_lcps,]
+  lcp_network <- lcp_network[order(lcp_network$origin_ID),]
+  rownames(lcp_network) <- 1:nrow(lcp_network)
+  
+  if((nlocs*nlocs-nlocs) - nrow(lcp_network) != 0) { 
+    message((nlocs*nlocs-nlocs) - nrow(lcp_network), " least-cost paths could not be calculated due to duplicate locations.")
+  }
+  
+  if(sum(empty_lcps) != 0) { 
+    message(sum(empty_lcps), " least-cost paths could not calculated due to being unreachable. If so, check via check_locations()")
+  }
+  
+  if(loc_vect) { 
+    lcp_network <- terra::vect(lcp_network)
+  }
+  
+  return(lcp_network)
+  
 }
+
+utils::globalVariables("i")

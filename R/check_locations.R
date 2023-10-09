@@ -1,47 +1,53 @@
-#' Check locations
-#'
-#' Checks that locations can be reached when calculating least cost paths
+#' check supplied locations
 #' 
-#' @param cost_surface \code{TransitionLayer} (gdistance package). Cost surface to be used when checking whether supplied locations are traversable from at least one adjcacent cell
-#'
-#' @param locations \code{SpatialPoints*} (sp package) locations to check 
+#' checks that locations can be reached when calculating least-cost paths
 #' 
-#' @details
-#' Using the supplied cost surface, the function checks whether the cells of supplied locations are traversable from at least one adjacent cell. If the cells of the supplied location are not traversable from at least one adjacent cell then a calculated least cost path cannot traverse to that location.
-#'
-#' @return \code{numeric vector} of location indexes that are not traversable from at least one adjacent cell
-#'
+#' @param x \code{conductanceMatrix}
+#' 
+#' @param locations \code{sf} 'POINT' or 'MULTIPOINT', \code{SpatVector}, \code{data.frame} or \code{matrix} containing the locations coordinates
+#' 
+#' @details 
+#' 
+#' Using the supplied conductanceMatrix and locations, the function checks whether:
+#' (1) the supplied locations are traversable from at least one adjacent cell
+#' (2) the supplied locations are within the extent of the supplied conductanceMatrix
+#' 
 #' @author Joseph Lewis
-#'
-#' @import raster
-#' @import gdistance
-#'
+#' 
+#' @return \code{message} 
+#' 
 #' @export
-#'
-check_locations <- function (cost_surface, locations) 
-{
-  if (!inherits(cost_surface, "TransitionLayer")) {
-    stop("cost_surface argument is invalid. Expecting a TransitionLayer object")
-  }
-  if (!inherits(locations, c("SpatialPoints", "SpatialPointsDataFrame"))) {
-    stop("locations argument is invalid. Expecting a SpatialPoints* object")
-  }
-  cs <- cost_surface
-  cells <- raster::cellFromXY(raster::raster(cs), locations)
-  connectivity_list <- apply(X = data.frame(cells), MARGIN = 1, 
-                             FUN = function(x) {
-                               all(cs@transitionMatrix[, x] == 0)
-                             })
-  indexes <- which(connectivity_list)
+#' 
+#' @examples 
+#' 
+#' r <- terra::rast(system.file("extdata/SICILY_1000m.tif", package="leastcostpath"))
+#' 
+#' slope_cs <- create_slope_cs(x = r, cost_function = "tobler")
+#' 
+#' locs <- sf::st_sf(geometry = sf::st_sfc(
+#' sf::st_point(c(861534, 4173726)),
+#' sf::st_point(c(897360, 4155813)),
+#' sf::st_point(c(928364, 4138588)),
+#' crs = terra::crs(r)))
+#' 
+#' check_locations(x = slope_cs, locations = locs)
+
+check_locations <- function(x, locations) { 
   
-  if (length(indexes) > 0) {
-    
-    message(length(locations), " locations were supplied. ", 
-            length(indexes), " locations are not traversable from at least one adjacent cell")
-    return(indexes)
-    
-  } else { 
-    message(length(locations), " locations were supplied. ", 
-            " 0 locations are not traversable from at least one adjacent cell")
+  cs_rast <- terra::rast(nrow = x$nrow, ncol = x$ncol, xmin = x$extent[1], xmax = x$extent[2], ymin = x$extent[3], ymax = x$extent[4],crs = x$crs)
+  
+  coords <- get_coordinates(locations)
+  cells <- terra::cellFromXY(cs_rast, coords)
+  cells <- cbind(cells)
+  
+  if(sum(is.na(cells)) > 0) { 
+    stop(sum(is.na(cells)), " location(s) are outside the extent of the conductanceMatrix")
+  }
+  
+  connectivity_list <- apply(X = cells, MARGIN = 1, FUN = function(j) { !all(x$conductanceMatrix[,j] == 0)})
+  connected <- sum(connectivity_list)
+  
+  if(sum(!connectivity_list) > 0) { 
+    stop(sum(!connectivity_list), " location(s) are not traversable from at least one adjacent cell")
   }
 }

@@ -2,23 +2,39 @@
 % Please edit documentation in R/check_locations.R
 \name{check_locations}
 \alias{check_locations}
-\title{Check locations}
+\title{check supplied locations}
 \usage{
-check_locations(cost_surface, locations)
+check_locations(x, locations)
 }
 \arguments{
-\item{cost_surface}{\code{TransitionLayer} (gdistance package). Cost surface to be used when checking whether supplied locations are traversable from at least one adjcacent cell}
+\item{x}{\code{conductanceMatrix}}
 
-\item{locations}{\code{SpatialPoints*} (sp package) locations to check}
+\item{locations}{\code{sf} 'POINT' or 'MULTIPOINT', \code{SpatVector}, \code{data.frame} or \code{matrix} containing the locations coordinates}
 }
 \value{
-\code{numeric vector} of location indexes that are not traversable from at least one adjacent cell
+\code{message}
 }
 \description{
-Checks that locations can be reached when calculating least cost paths
+checks that locations can be reached when calculating least-cost paths
 }
 \details{
-Using the supplied cost surface, the function checks whether the cells of supplied locations are traversable from at least one adjacent cell. If the cells of the supplied location are not traversable from at least one adjacent cell then a calculated least cost path cannot traverse to that location.
+Using the supplied conductanceMatrix and locations, the function checks whether:
+(1) the supplied locations are traversable from at least one adjacent cell
+(2) the supplied locations are within the extent of the supplied conductanceMatrix
+}
+\examples{
+
+r <- terra::rast(system.file("extdata/SICILY_1000m.tif", package="leastcostpath"))
+
+slope_cs <- create_slope_cs(x = r, cost_function = "tobler")
+
+locs <- sf::st_sf(geometry = sf::st_sfc(
+sf::st_point(c(861534, 4173726)),
+sf::st_point(c(897360, 4155813)),
+sf::st_point(c(928364, 4138588)),
+crs = terra::crs(r)))
+
+check_locations(x = slope_cs, locations = locs)
 }
 \author{
 Joseph Lewis

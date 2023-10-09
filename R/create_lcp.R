@@ -1,90 +1,94 @@
-#' Calculate Least Cost Path from Origin to Destination
-#'
-#' Calculates a Least Cost Path from an origin location to a destination location. Applies Dijkstra's algorithm.
-#'
-#' @param cost_surface \code{TransitionLayer} (gdistance package). Cost surface to be used in Least Cost Path calculation
-#'
-#' @param origin \code{SpatialPoints*} (sp package) location from which the Least Cost Path is calculated. Only the first row is taken into account
-#'
-#' @param destination \code{SpatialPoints*} (sp package) location to which the Least Cost Path is calculated. Only the first row is taken into account
-#'
-#' @param directional \code{logical}. if TRUE Least Cost Path calculated from origin to destination only. If FALSE Least Cost Path calculated from origin to destination and destination to origin. Default is FALSE
-#'
-#' @param cost_distance \code{logical}. if TRUE computes total accumulated cost for each Least Cost Path. Default is FALSE
-#'
-#' @references Dijkstra, E. W. (1959). A note on two problems in connexion with graphs. Numerische Mathematik. 1: 269-271.
-#'
+#' Calculate Least-cost Path from Origin to Destinations
+#' 
+#' Calculates the Least-cost path from an origin location to one or more destination locations. Applies Dijkstra's algorithm as implemented in the igraph R package.
+#' 
+#' @param x \code{conductanceMatrix} 
+#' 
+#' @param origin \code{sf} 'POINT' or 'MULTIPOINT', \code{SpatVector}, \code{data.frame} or \code{matrix} containing the origin coordinates. Only the first row of the supplied object is used as the origin.
+#' 
+#' @param destination \code{sf} 'POINT' or 'MULTIPOINT', \code{SpatVector}, \code{data.frame} or \code{matrix} containing the destination coordinates. If the object contains multiple coordinates then least-cost paths will be calculated from the origin to all destinations
+#' 
+#' @param cost_distance \code{logical} if TRUE computes total accumulated cost from origin to the destinations. FALSE (default)
+#' 
+#' @param check_locations \code{logical} if TRUE checks if origin and destination are traversable by the least-cost path. FALSE (default)
+#' 
 #' @author Joseph Lewis
-#'
-#' @import rgdal
-#' @import rgeos
-#' @import sp
-#' @import raster
-#' @import gdistance
-#'
+#' 
+#' @return \code{sf}  Least-cost path from origin and destinations based on the supplied \code{conductanceMatrix} 
+#' 
 #' @export
-#'
-#' @return \code{SpatialLinesDataFrame} (sp package) of length 1 if directional argument is TRUE or 2 if directional argument is FALSE. The resultant object is the shortest route (i.e. least cost) between origin and destination using the supplied \code{TransitionLayer}.
-#'
-#'@examples
-#' r <- raster::raster(system.file('external/maungawhau.grd', package = 'gdistance'))
-#'
-#' slope_cs <- create_slope_cs(r, cost_function = 'tobler')
-#'
-#' loc1 = cbind(2667670, 6479000)
-#' loc1 = sp::SpatialPoints(loc1)
-#'
-#' loc2 = cbind(2667800, 6479400)
-#' loc2 = sp::SpatialPoints(loc2)
-#'
-#' lcps <- create_lcp(cost_surface = slope_cs, origin = loc1,
-#' destination = loc2, directional = FALSE, cost_distance = FALSE)
+#' 
+#' @examples 
+#' 
+#' r <- terra::rast(system.file("extdata/SICILY_1000m.tif", package="leastcostpath"))
+#' 
+#' slope_cs <- create_slope_cs(x = r, cost_function = "tobler", neighbours = 4)
+#' 
+#' locs <- sf::st_sf(geometry = sf::st_sfc(
+#' sf::st_point(c(839769, 4199443)),
+#' sf::st_point(c(1038608, 4100024)),
+#' sf::st_point(c(1017819, 4206255)),
+#' sf::st_point(c(1017819, 4206255)),
+#' crs = terra::crs(r)))
+#' 
+#' lcps <- create_lcp(x = slope_cs, origin = locs[1,], destination = locs)
 
-create_lcp <- function(cost_surface, origin, destination, directional = FALSE, cost_distance = FALSE) {
+create_lcp <- function(x, origin, destination, cost_distance = FALSE, check_locations = FALSE) {
+  
+  if(check_locations) { 
+    check_locations(x, origin)
+    check_locations(x, destination)
+  }
+  
+  cs_rast <- terra::rast(nrow = x$nrow, ncol = x$ncol, xmin = x$extent[1], xmax = x$extent[2], ymin = x$extent[3], ymax = x$extent[4],crs = x$crs)
+  
+  from_coords <- get_coordinates(origin)
+  to_coords <- get_coordinates(destination)
+  
+  from_cell <- terra::cellFromXY(cs_rast, from_coords[1,, drop = FALSE])
+  to_cell <- terra::cellFromXY(cs_rast, to_coords)
+  
+  cm_graph <- igraph::graph_from_adjacency_matrix(x$conductanceMatrix, mode = "directed", weighted = TRUE)
+  
+  igraph::E(cm_graph)$weight <- (1/igraph::E(cm_graph)$weight)
+  
+  lcp_graph <- igraph::shortest_paths(cm_graph, from = from_cell, to = to_cell, mode = "out", algorithm = "dijkstra")
+  
+  lcps <- lapply(lcp_graph$vpath, FUN = function(i) { 
     
-    if (!inherits(cost_surface, "TransitionLayer")) {
-        stop("cost_surface argument is invalid. Expecting a TransitionLayer object")
+    lcp_xy <- terra::xyFromCell(cs_rast, as.integer(i))
+    lcp <- sf::st_sf(geometry = sf::st_sfc(sf::st_linestring(lcp_xy)), crs = x$crs)
+    return(lcp)
+  }
+  )
+  
+  lcps <- do.call(rbind, lcps)
+  
+  if(!is.function(x$costFunction)) { 
+    lcps$costFunction <- x$costFunction
+  } else if (is.function(x$costFunction)) { 
+    lcps$costFunction <- deparse(body(x$costFunction)[[2]])
+  }
+  
+  lcps$fromCell <- from_cell
+  lcps$toCell <- to_cell
+
+  if (cost_distance) {
+    lcps$cost <- NA
+    for(i in 1:length(to_cell)) { 
+    lcps$cost[i] <- igraph::distances(graph = cm_graph, v = from_cell, to = to_cell[i], mode = "out", algorithm = "dijkstra")
     }
-    
-    if (!inherits(origin, c("SpatialPoints", "SpatialPointsDataFrame"))) {
-        stop("origin argument is invalid. Expecting a SpatialPoints* object")
-    }
-    
-    if (!inherits(destination, c("SpatialPoints", "SpatialPointsDataFrame"))) {
-        stop("destination argument is invalid. Expecting a SpatialPoints* object")
-    }
-    
-    if (directional == "TRUE") {
-        
-        sPath <- gdistance::shortestPath(cost_surface, origin, destination, output = "SpatialLines")
-        
-        if (cost_distance) {
-            
-            sPath$cost <- as.vector(gdistance::costDistance(cost_surface, origin, destination))
-            
-        }
-        
-        sPath$direction <- "A to B"
-        
-    } else {
-        
-        sPaths <- list()
-        
-        sPaths[[1]] <- gdistance::shortestPath(cost_surface, origin, destination, output = "SpatialLines")
-        sPaths[[2]] <- gdistance::shortestPath(cost_surface, destination, origin, output = "SpatialLines")
-        
-        if (cost_distance) {
-            
-            sPaths[[1]]$cost <- as.vector(gdistance::costDistance(cost_surface, origin, destination))
-            sPaths[[2]]$cost <- as.vector(gdistance::costDistance(cost_surface, destination, origin))
-            
-        }
-        
-        sPaths[[1]]$direction <- "A to B"
-        sPaths[[2]]$direction <- "B to A"
-        
-        sPath <- do.call(rbind, sPaths)
-    }
-    
-    return(sPath)
+  }
+  
+  if(sum(to_cell %in% from_cell) != 0) { 
+    message(sum(to_cell %in% from_cell), " least-cost paths could not be calculated from origin to destination as these share the same location")
+  }
+  
+  lcps <- lcps[!is.na(sf::st_is_valid(lcps)),]
+  
+  if(inherits(origin, "SpatVector") & inherits(destination, "SpatVector")) { 
+    lcps <- terra::vect(lcps)
+  }
+  
+  return(lcps)
 }
